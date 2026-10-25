@@ -87,13 +87,28 @@
       Smartphone, Monitor, User, Upload, Image as ImageIcon, Tag, Wallet
     } from 'lucide-react';
 
+    // ============================================================
+    // PASTE YOUR FIREBASE WEB APP CONFIG HERE (Firebase Console ->
+    // Project settings -> Your apps -> Web app -> firebaseConfig).
+    // Without it the store runs in LOCAL mode: orders are saved only
+    // in the browser that placed them and are NOT visible on other devices.
+    // ============================================================
+    const MY_FIREBASE_CONFIG = {
+      apiKey: "",
+      authDomain: "",
+      projectId: "",
+      storageBucket: "",
+      messagingSenderId: "",
+      appId: ""
+    };
+
     let firebaseConfig = {};
     try {
       firebaseConfig = typeof window.__firebase_config !== 'undefined' 
         ? JSON.parse(window.__firebase_config) 
-        : {};
+        : MY_FIREBASE_CONFIG;
     } catch (e) {
-      firebaseConfig = {};
+      firebaseConfig = MY_FIREBASE_CONFIG;
     }
     const appId = typeof window.__app_id !== 'undefined' ? window.__app_id : 'ps-vault-store-app';
     const hasValidFirebase = Boolean(firebaseConfig && firebaseConfig.apiKey);
@@ -1860,6 +1875,13 @@ ${itemsLines}
                     <Eye className="w-3.5 h-3.5 text-blue-400" />
                     <span>{tr('وضع الإدارة مفعل:', 'Admin Mode Active:')}</span>
                   </span>
+
+                  {!hasValidFirebase && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-300 text-[11px] font-bold">
+                      <AlertCircle className="w-3.5 h-3.5" />
+                      <span>{tr('وضع محلي: الطلبات لا تظهر على الأجهزة الأخرى (Firebase غير مفعّل)', 'Local mode: orders are NOT shared across devices (Firebase not configured)')}</span>
+                    </span>
+                  )}
 
                   <button
                     onClick={handleAdminLogout}
