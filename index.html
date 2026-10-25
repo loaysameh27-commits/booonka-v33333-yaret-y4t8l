@@ -1,0 +1,3360 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bonka Store | بونكا ستور لألعاب البلايستيشن PS4 & PS5</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <style>
+    body {
+      font-family: 'Cairo', 'Inter', sans-serif;
+      background-color: #060913;
+      color: #f1f5f9;
+      margin: 0;
+      padding: 0;
+    }
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #060913;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #06b6d4;
+    }
+  </style>
+
+  <!-- ES Module Import Map -->
+  <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@18.3.1",
+        "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
+        "lucide-react": "https://esm.sh/lucide-react@0.460.0?deps=react@18.3.1",
+        "firebase/app": "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js",
+        "firebase/auth": "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js",
+        "firebase/firestore": "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js"
+      }
+    }
+  </script>
+
+  <!-- Babel Standalone -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" data-type="module">
+    import React, { useState, useEffect, useMemo, useRef } from 'react';
+    import { createRoot } from 'react-dom/client';
+    import { initializeApp } from 'firebase/app';
+    import { 
+      getAuth, 
+      signInWithCustomToken, 
+      signInAnonymously, 
+      onAuthStateChanged 
+    } from 'firebase/auth';
+    import { 
+      getFirestore, 
+      collection, 
+      doc, 
+      setDoc, 
+      addDoc, 
+      updateDoc, 
+      deleteDoc, 
+      onSnapshot 
+    } from 'firebase/firestore';
+    import { 
+      Gamepad2, ShoppingCart, ShieldCheck, KeyRound, Search, 
+      Sparkles, CheckCircle2, AlertCircle, Trash2, 
+      Package, CreditCard, ChevronDown, X, Info, Zap, 
+      Copy, Check, RefreshCw, Eye, Lock, Globe,
+      Trophy, UserCheck, SlidersHorizontal, ArrowUpRight,
+      MessageCircle, PhoneCall, ExternalLink,
+      Smartphone, Monitor, User, Upload, Image as ImageIcon, Tag, Wallet
+    } from 'lucide-react';
+
+    let firebaseConfig = {};
+    try {
+      firebaseConfig = typeof window.__firebase_config !== 'undefined' 
+        ? JSON.parse(window.__firebase_config) 
+        : {};
+    } catch (e) {
+      firebaseConfig = {};
+    }
+    const appId = typeof window.__app_id !== 'undefined' ? window.__app_id : 'ps-vault-store-app';
+    const hasValidFirebase = Boolean(firebaseConfig && firebaseConfig.apiKey);
+
+    let app = null;
+    let auth = null;
+    let db = null;
+
+    if (hasValidFirebase) {
+      try {
+        app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+        db = getFirestore(app);
+      } catch (e) {
+        console.warn("Firebase initialization skipped, using local storage mode.", e);
+      }
+    }
+
+    let syncChannel = null;
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        syncChannel = new window.BroadcastChannel('bonka_store_realtime_sync');
+      }
+    } catch (e) {
+      syncChannel = null;
+    }
+
+    const INITIAL_GAMES_SEED = [
+      {
+        id: "spider-man-2",
+        title: "Marvel's Spider-Man 2",
+        slug: "spider-man-2",
+        console: "PS5",
+        genre: "Action / Adventure",
+        rating: 4.9,
+        releaseYear: 2023,
+        featured: true,
+        badge: "الأكثر مبيعاً",
+        primaryPrice: 1250,
+        secondaryPrice: 750,
+        retailPrice: 3400,
+        primaryStock: 12,
+        secondaryStock: 8,
+        coverGradient: "from-red-600 via-rose-800 to-slate-950",
+        accentColor: "#ef4444",
+        image: "https://images.unsplash.com/photo-1607853202273-797f1c22a38e?auto=format&fit=crop&w=900&q=80",
+        description: "Spider-Men, Peter Parker and Miles Morales, return for an exciting new adventure in the critically acclaimed Marvel's Spider-Man franchise for PS5."
+      },
+      {
+        id: "god-of-war-ragnarok",
+        title: "God of War Ragnarök",
+        slug: "god-of-war-ragnarok",
+        console: "PS4 & PS5",
+        genre: "Action / Mythology",
+        rating: 4.95,
+        releaseYear: 2022,
+        featured: true,
+        badge: "أسطورية",
+        primaryPrice: 1100,
+        secondaryPrice: 650,
+        retailPrice: 3400,
+        primaryStock: 18,
+        secondaryStock: 14,
+        coverGradient: "from-sky-600 via-blue-900 to-slate-950",
+        accentColor: "#38bdf8",
+        image: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=900&q=80",
+        description: "Kratos and Atreus must journey to each of the Nine Realms in search of answers as Asgardian forces prepare for a prophesied battle that will end the world."
+      },
+      {
+        id: "ea-sports-fc-25",
+        title: "EA SPORTS FC 25",
+        slug: "ea-sports-fc-25",
+        console: "PS4 & PS5",
+        genre: "Sports / Football",
+        rating: 4.7,
+        releaseYear: 2024,
+        featured: false,
+        badge: "الأكثر طلباً",
+        primaryPrice: 1350,
+        secondaryPrice: 850,
+        retailPrice: 3400,
+        primaryStock: 25,
+        secondaryStock: 19,
+        coverGradient: "from-emerald-600 via-teal-900 to-slate-950",
+        accentColor: "#10b981",
+        image: "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=900&q=80",
+        description: "Experience more ways to win for the club with 5v5 Rush and tactical overhauls with FC IQ across PS4 and PS5."
+      },
+      {
+        id: "elden-ring-sote",
+        title: "Elden Ring: Shadow of the Erdtree",
+        slug: "elden-ring-sote",
+        console: "PS4 & PS5",
+        genre: "Souls-like / RPG",
+        rating: 4.98,
+        releaseYear: 2024,
+        featured: true,
+        badge: "نسخة العام",
+        primaryPrice: 1400,
+        secondaryPrice: 900,
+        retailPrice: 3800,
+        primaryStock: 9,
+        secondaryStock: 6,
+        coverGradient: "from-amber-500 via-yellow-900 to-slate-950",
+        accentColor: "#f59e0b",
+        image: "https://images.unsplash.com/photo-1538481199705-c710c4e965fc?auto=format&fit=crop&w=900&q=80",
+        description: "Rise, Tarnished, and be guided by grace to brandish the power of the Elden Ring and explore the Realm of Shadow in this complete bundle."
+      },
+      {
+        id: "ghost-of-tsushima",
+        title: "Ghost of Tsushima Director's Cut",
+        slug: "ghost-of-tsushima",
+        console: "PS4 & PS5",
+        genre: "Open World / Samurai",
+        rating: 4.92,
+        releaseYear: 2021,
+        featured: false,
+        badge: "Director's Cut",
+        primaryPrice: 950,
+        secondaryPrice: 550,
+        retailPrice: 2900,
+        primaryStock: 15,
+        secondaryStock: 11,
+        coverGradient: "from-rose-500 via-purple-900 to-slate-950",
+        accentColor: "#f43f5e",
+        image: "https://images.unsplash.com/photo-1552820728-8b83bb6b773f?auto=format&fit=crop&w=900&q=80",
+        description: "Forge a new path and wage an unconventional war for the freedom of Tsushima, including the full Iki Island expansion."
+      },
+      {
+        id: "the-last-of-us-part-1",
+        title: "The Last of Us Part I",
+        slug: "the-last-of-us-part-1",
+        console: "PS5",
+        genre: "Survival / Narrative",
+        rating: 4.89,
+        releaseYear: 2022,
+        featured: false,
+        badge: "حصرية PS5",
+        primaryPrice: 1050,
+        secondaryPrice: 600,
+        retailPrice: 3400,
+        primaryStock: 10,
+        secondaryStock: 7,
+        coverGradient: "from-teal-700 via-slate-800 to-slate-950",
+        accentColor: "#14b8a6",
+        image: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=900&q=80",
+        description: "Experience the emotional storytelling and unforgettable characters in The Last of Us, rebuilt from the ground up for PlayStation 5."
+      },
+      {
+        id: "bloodborne-goty",
+        title: "Bloodborne: Game of the Year",
+        slug: "bloodborne-goty",
+        console: "PS4",
+        genre: "Action RPG",
+        rating: 4.94,
+        releaseYear: 2015,
+        featured: false,
+        badge: "كلاسيكية PS4",
+        primaryPrice: 600,
+        secondaryPrice: 350,
+        retailPrice: 1700,
+        primaryStock: 20,
+        secondaryStock: 25,
+        coverGradient: "from-indigo-800 via-slate-900 to-black",
+        accentColor: "#6366f1",
+        image: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=900&q=80",
+        description: "Hunt your nightmares as you search for answers in the ancient city of Yharnam, now cursed with a strange endemic illness. Includes The Old Hunters DLC."
+      },
+      {
+        id: "black-myth-wukong",
+        title: "Black Myth: Wukong",
+        slug: "black-myth-wukong",
+        console: "PS5",
+        genre: "Action RPG / Myth",
+        rating: 4.88,
+        releaseYear: 2024,
+        featured: true,
+        badge: "تريند",
+        primaryPrice: 1300,
+        secondaryPrice: 800,
+        retailPrice: 2950,
+        primaryStock: 7,
+        secondaryStock: 9,
+        coverGradient: "from-orange-600 via-amber-950 to-slate-950",
+        accentColor: "#ea580c",
+        image: "https://images.unsplash.com/photo-1579373903781-fd5c0c30c4cd?auto=format&fit=crop&w=900&q=80",
+        description: "Set out as the Destined One to venture into the challenges and marvels ahead, to uncover the obscured truth beneath the veil of a glorious legend."
+      }
+    ];
+
+    const DEFAULT_PROMO_CODES = [
+      { id: 'promo_bonka10', code: 'BONKA10', discountType: 'percent', discountValue: 10, active: true },
+      { id: 'promo_welcome100', code: 'WELCOME100', discountType: 'fixed', discountValue: 100, active: true }
+    ];
+
+    const normalizeEgpPrice = (val, fallback = 950) => {
+      const num = Number(val);
+      if (!num || isNaN(num)) return fallback;
+      if (num < 100) return Math.round((num * 38) / 25) * 25;
+      return Math.round(num);
+    };
+
+    const formatEGP = (val, lang = 'ar') => {
+      const amount = Math.max(0, Math.round(Number(val) || 0));
+      if (lang === 'en') {
+        return `${amount.toLocaleString('en-US')} EGP`;
+      }
+      return `${amount.toLocaleString('ar-EG')} ج.م`;
+    };
+
+    const DEFAULT_FB_MESSENGER_URL = 'https://m.me/358605444011590';
+    const DEFAULT_WHATSAPP_NUMBER = '201205047037';
+    const DEFAULT_ADMIN_PIN = 'BNK#9920$X';
+    const SECRET_SEARCH_TRIGGER = '//bnk-root';
+
+    const DEFAULT_VFC_NUMBER = '01205047037';
+    const DEFAULT_INSTAPAY_ACCOUNT = 'https://ipn.eg/S/loaysameh12/instapay/5DaPYm';
+    const DEFAULT_TELDA_ACCOUNT = '01205047037';
+
+    const sanitizeMessengerLink = (url) => {
+      if (!url || url.includes('61563495661407') || url === 'https://m.me/psvaultstore') {
+        return DEFAULT_FB_MESSENGER_URL;
+      }
+      if (url.startsWith('m.me/')) {
+        return `https://${url}`;
+      }
+      return url;
+    };
+
+    // Extract clean international phone number (e.g. 201205047037) so WhatsApp API pre-fills text reliably
+    const extractWhatsAppPhone = (rawInput) => {
+      const val = String(rawInput || '').trim();
+      if (!val || val.includes('wa.me/qr/') || val === '201000000000') {
+        return DEFAULT_WHATSAPP_NUMBER;
+      }
+      const digits = val.replace(/[^0-9]/g, '');
+      if (digits.length >= 10) {
+        return digits.startsWith('01') ? `2${digits}` : digits;
+      }
+      return DEFAULT_WHATSAPP_NUMBER;
+    };
+
+    const getWhatsAppDirectChatUrl = (rawInput, messageText = '') => {
+      const phone = extractWhatsAppPhone(rawInput);
+      if (messageText) {
+        return `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(messageText)}`;
+      }
+      return `https://api.whatsapp.com/send?phone=${phone}`;
+    };
+
+    // Fast image compression that never hangs
+    const compressReceiptImage = (file) => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const img = new Image();
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas');
+              const MAX_WIDTH = 800;
+              const scale = img.width > MAX_WIDTH ? MAX_WIDTH / img.width : 1;
+              canvas.width = Math.round(img.width * scale);
+              canvas.height = Math.round(img.height * scale);
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+              const dataUrl = canvas.toDataURL('image/jpeg', 0.72);
+              if (typeof canvas.toBlob === 'function') {
+                canvas.toBlob(
+                  (blob) => resolve({ dataUrl, blob }),
+                  'image/jpeg',
+                  0.72
+                );
+              } else {
+                resolve({ dataUrl, blob: null });
+              }
+            } catch (err) {
+              reject(err);
+            }
+          };
+          img.onerror = reject;
+          img.src = event.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    };
+
+    // Non-blocking background cloud upload with strict 4.5s timeout so the app NEVER freezes
+    const uploadReceiptWithTimeout = async (blob, filename = 'receipt.jpg') => {
+      if (!blob) return null;
+
+      const fetchWithTimeout = async (url, options, ms = 4500) => {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), ms);
+        try {
+          const res = await fetch(url, { ...options, signal: controller.signal });
+          clearTimeout(timer);
+          return res;
+        } catch (err) {
+          clearTimeout(timer);
+          throw err;
+        }
+      };
+
+      try {
+        const form2 = new FormData();
+        form2.append('file', blob, filename);
+        const res2 = await fetchWithTimeout('https://tmpfiles.org/api/v1/upload', {
+          method: 'POST',
+          body: form2
+        });
+        if (res2 && res2.ok) {
+          const json = await res2.json();
+          const rawUrl = json?.data?.url;
+          if (rawUrl) {
+            return rawUrl.replace('https://tmpfiles.org/', 'https://tmpfiles.org/dl/');
+          }
+        }
+      } catch (e) {}
+
+      try {
+        const form1 = new FormData();
+        form1.append('reqtype', 'fileupload');
+        form1.append('time', '72h');
+        form1.append('fileToUpload', blob, filename);
+        const res1 = await fetchWithTimeout('https://litterbox.catbox.moe/resources/internals/api.php', {
+          method: 'POST',
+          body: form1
+        });
+        if (res1 && res1.ok) {
+          const textUrl = (await res1.text()).trim();
+          if (textUrl.startsWith('http')) return textUrl;
+        }
+      } catch (e) {}
+
+      return null;
+    };
+
+    const generateVaultCredentials = (gameTitle, licenseType) => {
+      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+      let pass = "PSN#";
+      for (let i = 0; i < 8; i++) {
+        pass += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      const backupCode = `${Math.floor(100000 + Math.random() * 900000)}`;
+      return {
+        psnEmail: `https://wa.me/${DEFAULT_WHATSAPP_NUMBER} (QR Code)`,
+        psnPassword: pass,
+        twoStepCode: backupCode,
+        activationInstructions: licenseType === 'Primary'
+          ? "امسح الـ QR Code المستلم لتسجيل الدخول على جهاز PS4/PS5 -> اذهب إلى الإعدادات > المستخدمون والحسابات > أخرى > مشاركة الجهاز واللعب دون اتصال -> اضغط 'تفعيل'. حمل اللعبة من المكتبة، ثم ارجع إلى حسابك الشخصي للعب!"
+          : "امسح الـ QR Code المستلم لتسجيل الدخول على جهاز PS4/PS5 -> اختر 'عدم التفعيل' عند سؤالك عن مشاركة الجهاز -> حمل اللعبة من المكتبة -> العب دائماً من داخل هذا الحساب مباشرة مع اتصال الإنترنت."
+      };
+    };
+
+    function App() {
+      const [user, setUser] = useState(null);
+      const [authReady, setAuthReady] = useState(false);
+      const [games, setGames] = useState([]);
+      const [cart, setCart] = useState([]);
+      const [orders, setOrders] = useState([]);
+      const [accountPool, setAccountPool] = useState([]);
+      const [promoCodes, setPromoCodes] = useState(DEFAULT_PROMO_CODES);
+      const [storeConfig, setStoreConfig] = useState({
+        whatsappNumber: DEFAULT_WHATSAPP_NUMBER,
+        storePageUrl: DEFAULT_FB_MESSENGER_URL,
+        messengerUrl: DEFAULT_FB_MESSENGER_URL,
+        adminPin: DEFAULT_ADMIN_PIN,
+        vfcNumber: DEFAULT_VFC_NUMBER,
+        vfcRecipient: 'Bonka Store',
+        instapayAccount: DEFAULT_INSTAPAY_ACCOUNT,
+        instapayRecipient: 'loaysameh12',
+        teldaAccount: DEFAULT_TELDA_ACCOUNT,
+        teldaRecipient: 'Bonka Store'
+      });
+      const [loadingData, setLoadingData] = useState(true);
+      const [seedingInProgress, setSeedingInProgress] = useState(false);
+
+      const [lang, setLang] = useState('ar');
+      const isAr = lang === 'ar';
+      const tr = (arText, enText) => (lang === 'ar' ? arText : enText);
+
+      const [previewDevice, setPreviewDevice] = useState('pc');
+      const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
+        try {
+          return sessionStorage.getItem('bonka_admin_unlocked') === 'true';
+        } catch (e) {
+          return false;
+        }
+      });
+      const [adminPinModalOpen, setAdminPinModalOpen] = useState(false);
+      const [adminPinInput, setAdminPinInput] = useState('');
+      const [failedPinAttempts, setFailedPinAttempts] = useState(0);
+      const [lockoutUntil, setLockoutUntil] = useState(0);
+      const isCustomerViewOnly = !isAdminAuthenticated;
+
+      const [activeTab, setActiveTab] = useState('store');
+      const [cartOpen, setCartOpen] = useState(false);
+      const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
+      const [postOrderModal, setPostOrderModal] = useState(null);
+      const [selectedGameModal, setSelectedGameModal] = useState(null);
+      const [gameToDeleteModal, setGameToDeleteModal] = useState(null);
+      const [receiptPreviewModal, setReceiptPreviewModal] = useState(null);
+      const [toast, setToast] = useState(null);
+      const [copiedId, setCopiedId] = useState(null);
+
+      // Cart Payment & Promo states
+      const [paymentDropdownOpen, setPaymentDropdownOpen] = useState(false);
+      const [promoInput, setPromoInput] = useState('');
+      const [appliedPromo, setAppliedPromo] = useState(null);
+
+      // Checkout Form + Receipt Image + Cloud Receipt Link
+      const [checkoutForm, setCheckoutForm] = useState({
+        customerName: '',
+        whatsappNumber: '',
+        paymentMethod: 'instapay',
+        receiptImage: '',
+        receiptHostedUrl: '',
+        receiptFileName: '',
+        agreedToRules: true
+      });
+      const [uploadingReceipt, setUploadingReceipt] = useState(false);
+      const [submittingOrder, setSubmittingOrder] = useState(false);
+      const fileInputRef = useRef(null);
+
+      const [searchQuery, setSearchQuery] = useState('');
+      const [consoleFilter, setConsoleFilter] = useState('ALL');
+      const [genreFilter, setGenreFilter] = useState('ALL');
+      const [globalLicensePreference, setGlobalLicensePreference] = useState('Primary');
+      const [cardLicenseSelections, setCardLicenseSelections] = useState({});
+      const [sortBy, setSortBy] = useState('featured');
+
+      const [adminSubTab, setAdminSubTab] = useState('inventory');
+      const [editingGameId, setEditingGameId] = useState(null);
+      const [newPromoForm, setNewPromoForm] = useState({
+        code: '',
+        discountType: 'percent',
+        discountValue: 10
+      });
+      const [vaultForm, setVaultForm] = useState({
+        gameId: '',
+        licenseType: 'Primary',
+        psnEmail: '',
+        psnPassword: '',
+        twoStepCode: '',
+        notes: ''
+      });
+      const [managingOrderModal, setManagingOrderModal] = useState(null);
+      const [editableOrderAccounts, setEditableOrderAccounts] = useState([]);
+      const [gameForm, setGameForm] = useState({
+        title: '',
+        console: 'PS5',
+        genre: 'Action / Adventure',
+        rating: 4.8,
+        releaseYear: 2024,
+        featured: false,
+        badge: 'New Arrival',
+        primaryPrice: 1200,
+        secondaryPrice: 700,
+        retailPrice: 3400,
+        primaryStock: 10,
+        secondaryStock: 10,
+        image: 'https://images.unsplash.com/photo-1607853202273-797f1c22a38e?auto=format&fit=crop&w=900&q=80',
+        description: ''
+      });
+
+      const showToast = (message, type = 'success') => {
+        setToast({ message, type });
+        setTimeout(() => {
+          setToast(null);
+        }, 3800);
+      };
+
+      const syncLocalState = (key, data) => {
+        try {
+          localStorage.setItem(`bonka_local_${key}`, JSON.stringify(data));
+          if (syncChannel) {
+            syncChannel.postMessage({ key, data, timestamp: Date.now() });
+          }
+        } catch (err) {}
+      };
+
+      useEffect(() => {
+        const applySyncUpdate = (key, data) => {
+          if (!data) return;
+          if (key === 'games') setGames(data);
+          if (key === 'cart') setCart(data);
+          if (key === 'orders') setOrders(data);
+          if (key === 'account_pool') setAccountPool(data);
+          if (key === 'promo_codes') setPromoCodes(data);
+          if (key === 'settings') {
+            setStoreConfig((prev) => ({
+              ...prev,
+              ...data,
+              whatsappNumber: extractWhatsAppPhone(data.whatsappNumber),
+              storePageUrl: sanitizeMessengerLink(data.storePageUrl),
+              messengerUrl: sanitizeMessengerLink(data.messengerUrl || data.storePageUrl)
+            }));
+          }
+        };
+
+        const handleStorageEvent = (e) => {
+          if (!e.key || !e.key.startsWith('bonka_local_') || !e.newValue) return;
+          const shortKey = e.key.replace('bonka_local_', '');
+          try {
+            const parsed = JSON.parse(e.newValue);
+            applySyncUpdate(shortKey, parsed);
+          } catch (err) {}
+        };
+
+        const handleBroadcastMessage = (e) => {
+          if (e && e.data && e.data.key) {
+            applySyncUpdate(e.data.key, e.data.data);
+          }
+        };
+
+        window.addEventListener('storage', handleStorageEvent);
+        if (syncChannel) {
+          try {
+            syncChannel.addEventListener('message', handleBroadcastMessage);
+          } catch (e) {
+            syncChannel.onmessage = handleBroadcastMessage;
+          }
+        }
+
+        return () => {
+          window.removeEventListener('storage', handleStorageEvent);
+          if (syncChannel) {
+            try {
+              syncChannel.removeEventListener('message', handleBroadcastMessage);
+            } catch (e) {
+              syncChannel.onmessage = null;
+            }
+          }
+        };
+      }, []);
+
+      useEffect(() => {
+        document.title = lang === 'ar'
+          ? 'Bonka Store | بونكا ستور لألعاب البلايستيشن PS4 & PS5'
+          : 'Bonka Store | Official PS4 & PS5 Digital Accounts Store';
+        document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+        document.documentElement.lang = lang;
+      }, [lang]);
+
+      const handleAdminUnlockSubmit = (e) => {
+        e.preventDefault();
+        if (Date.now() < lockoutUntil) {
+          const remainingSec = Math.ceil((lockoutUntil - Date.now()) / 1000);
+          showToast(tr(`تم حظر المحاولات مؤقتاً. انتظر ${remainingSec} ثانية.`, `Too many attempts. Try again in ${remainingSec}s.`), 'error');
+          return;
+        }
+
+        const configuredPin = (storeConfig.adminPin || DEFAULT_ADMIN_PIN).trim();
+        if (adminPinInput.trim() === configuredPin) {
+          setIsAdminAuthenticated(true);
+          try { sessionStorage.setItem('bonka_admin_unlocked', 'true'); } catch (e) {}
+          setAdminPinModalOpen(false);
+          setAdminPinInput('');
+          setFailedPinAttempts(0);
+          setActiveTab('admin');
+          showToast(tr('تم التحقق من الكود السري وفتح لوحة الإدارة!', 'Secret Code Verified — Admin Unlocked!'));
+        } else {
+          const nextAttempts = failedPinAttempts + 1;
+          setFailedPinAttempts(nextAttempts);
+          setAdminPinInput('');
+          if (nextAttempts >= 3) {
+            setLockoutUntil(Date.now() + 60000);
+            setAdminPinModalOpen(false);
+            showToast(tr('تم إغلاق البوابة لمدة 60 ثانية بسبب محاولات خاطئة.', 'Locked for 60 seconds due to failed attempts.'), 'error');
+          } else {
+            showToast(tr('الكود السري غير صحيح!', 'Invalid Secret Code!'), 'error');
+          }
+        }
+      };
+
+      const handleAdminLogout = () => {
+        setIsAdminAuthenticated(false);
+        try { sessionStorage.removeItem('bonka_admin_unlocked'); } catch (e) {}
+        if (activeTab === 'admin') setActiveTab('store');
+        setPreviewDevice('pc');
+        showToast(tr('تم قفل وضع الإدارة والعودة لواجهة العميل العامة.', 'Admin mode locked. Viewing public storefront.'), 'info');
+      };
+
+      useEffect(() => {
+        if (!hasValidFirebase) {
+          let localUid = 'local_guest_user';
+          try {
+            localUid = localStorage.getItem('bonka_local_uid') || '';
+            if (!localUid) {
+              localUid = 'local_user_' + Math.random().toString(36).substring(2, 10);
+              localStorage.setItem('bonka_local_uid', localUid);
+            }
+          } catch (e) {}
+          setUser({ uid: localUid });
+          setAuthReady(true);
+          return;
+        }
+
+        const initAuth = async () => {
+          try {
+            if (typeof window.__initial_auth_token !== 'undefined' && window.__initial_auth_token) {
+              await signInWithCustomToken(auth, window.__initial_auth_token);
+            } else {
+              await signInAnonymously(auth);
+            }
+          } catch (err) {}
+        };
+        initAuth();
+
+        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+          setUser(currentUser);
+          setAuthReady(true);
+        });
+        return () => unsubscribe();
+      }, []);
+
+      useEffect(() => {
+        if (!authReady || !user) return;
+
+        if (!hasValidFirebase) {
+          try {
+            const savedGames = JSON.parse(localStorage.getItem('bonka_local_games') || 'null');
+            if (savedGames && savedGames.length > 0) {
+              setGames(savedGames);
+            } else {
+              setGames(INITIAL_GAMES_SEED);
+              syncLocalState('games', INITIAL_GAMES_SEED);
+            }
+
+            setCart(JSON.parse(localStorage.getItem('bonka_local_cart') || '[]'));
+            setOrders(JSON.parse(localStorage.getItem('bonka_local_orders') || '[]'));
+            setAccountPool(JSON.parse(localStorage.getItem('bonka_local_account_pool') || '[]'));
+            const savedPromos = JSON.parse(localStorage.getItem('bonka_local_promo_codes') || 'null');
+            if (savedPromos && Array.isArray(savedPromos)) {
+              setPromoCodes(savedPromos);
+            } else {
+              setPromoCodes(DEFAULT_PROMO_CODES);
+              syncLocalState('promo_codes', DEFAULT_PROMO_CODES);
+            }
+
+            const savedCfg = JSON.parse(localStorage.getItem('bonka_local_settings') || 'null');
+            if (savedCfg) {
+              const updatedCfg = {
+                ...savedCfg,
+                whatsappNumber: extractWhatsAppPhone(savedCfg.whatsappNumber),
+                storePageUrl: sanitizeMessengerLink(savedCfg.storePageUrl),
+                messengerUrl: sanitizeMessengerLink(savedCfg.messengerUrl || savedCfg.storePageUrl),
+                vfcNumber: savedCfg.vfcNumber || DEFAULT_VFC_NUMBER,
+                instapayAccount: savedCfg.instapayAccount || DEFAULT_INSTAPAY_ACCOUNT,
+                teldaAccount: savedCfg.teldaAccount || DEFAULT_TELDA_ACCOUNT
+              };
+              setStoreConfig((prev) => ({ ...prev, ...updatedCfg }));
+              localStorage.setItem('bonka_local_settings', JSON.stringify(updatedCfg));
+            }
+          } catch (e) {
+            setGames(INITIAL_GAMES_SEED);
+          }
+          setLoadingData(false);
+          return;
+        }
+
+        const gamesRef = collection(db, 'artifacts', appId, 'public', 'data', 'games');
+        const unsubGames = onSnapshot(
+          gamesRef,
+          async (snapshot) => {
+            const loadedGames = snapshot.docs.map((d) => {
+              const raw = d.data();
+              return {
+                id: d.id,
+                ...raw,
+                primaryPrice: normalizeEgpPrice(raw.primaryPrice, 1100),
+                secondaryPrice: normalizeEgpPrice(raw.secondaryPrice, 650),
+                retailPrice: normalizeEgpPrice(raw.retailPrice, 3200)
+              };
+            });
+            let isInitialized = false;
+            try { isInitialized = Boolean(localStorage.getItem('bonka_games_seeded_v1')); } catch (e) {}
+
+            if (loadedGames.length === 0 && !seedingInProgress && !isInitialized) {
+              setSeedingInProgress(true);
+              try { localStorage.setItem('bonka_games_seeded_v1', 'true'); } catch (e) {}
+              try {
+                for (const item of INITIAL_GAMES_SEED) {
+                  const docRef = doc(gamesRef, item.slug);
+                  await setDoc(docRef, { ...item, createdAt: Date.now() });
+                }
+              } catch (seedErr) {} finally {
+                setSeedingInProgress(false);
+              }
+            } else {
+              if (loadedGames.length > 0) {
+                try { localStorage.setItem('bonka_games_seeded_v1', 'true'); } catch (e) {}
+              }
+              setGames(loadedGames);
+              syncLocalState('games', loadedGames);
+              setLoadingData(false);
+            }
+          },
+          (error) => { setLoadingData(false); }
+        );
+
+        const cartRef = collection(db, 'artifacts', appId, 'users', user.uid, 'cart');
+        const unsubCart = onSnapshot(cartRef, (snapshot) => {
+          const items = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+          setCart(items);
+          syncLocalState('cart', items);
+        });
+
+        const ordersRef = collection(db, 'artifacts', appId, 'public', 'data', 'orders');
+        const unsubOrders = onSnapshot(ordersRef, (snapshot) => {
+          const loadedOrders = snapshot.docs
+            .map((d) => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+          setOrders(loadedOrders);
+          syncLocalState('orders', loadedOrders);
+        });
+
+        const vaultRef = collection(db, 'artifacts', appId, 'public', 'data', 'account_pool');
+        const unsubVault = onSnapshot(vaultRef, (snapshot) => {
+          const loadedPool = snapshot.docs
+            .map((d) => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+          setAccountPool(loadedPool);
+          syncLocalState('account_pool', loadedPool);
+        });
+
+        const promoRef = collection(db, 'artifacts', appId, 'public', 'data', 'promo_codes');
+        const unsubPromos = onSnapshot(promoRef, (snapshot) => {
+          const loadedPromos = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+          if (loadedPromos.length > 0) {
+            setPromoCodes(loadedPromos);
+            syncLocalState('promo_codes', loadedPromos);
+          }
+        });
+
+        const settingsRef = doc(db, 'artifacts', appId, 'public', 'data', 'store_settings', 'config');
+        const unsubSettings = onSnapshot(settingsRef, (docSnap) => {
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            const cleanMessenger = sanitizeMessengerLink(data.storePageUrl);
+            const nextConfig = {
+              whatsappNumber: extractWhatsAppPhone(data.whatsappNumber),
+              storePageUrl: cleanMessenger,
+              messengerUrl: sanitizeMessengerLink(data.messengerUrl || cleanMessenger),
+              adminPin: data.adminPin && data.adminPin.trim().length >= 6 ? data.adminPin.trim() : DEFAULT_ADMIN_PIN,
+              vfcNumber: data.vfcNumber || DEFAULT_VFC_NUMBER,
+              vfcRecipient: data.vfcRecipient || 'Bonka Store',
+              instapayAccount: data.instapayAccount || DEFAULT_INSTAPAY_ACCOUNT,
+              instapayRecipient: data.instapayRecipient || 'loaysameh12',
+              teldaAccount: data.teldaAccount || DEFAULT_TELDA_ACCOUNT,
+              teldaRecipient: data.teldaRecipient || 'Bonka Store'
+            };
+            setStoreConfig((prev) => ({ ...prev, ...data, ...nextConfig }));
+            syncLocalState('settings', nextConfig);
+          }
+        });
+
+        return () => {
+          unsubGames();
+          unsubCart();
+          unsubOrders();
+          unsubVault();
+          unsubPromos();
+          unsubSettings();
+        };
+      }, [authReady, user]);
+
+      useEffect(() => {
+        if (selectedGameModal) {
+          const updated = games.find((g) => g.id === selectedGameModal.id);
+          if (updated) setSelectedGameModal(updated);
+        }
+      }, [games]);
+
+      // Payment Methods Configuration
+      const paymentMethodsList = useMemo(() => [
+        {
+          id: 'vodafone_cash',
+          titleAr: 'فودافون كاش (Vodafone Cash)',
+          titleEn: 'Vodafone Cash Wallet',
+          shortAr: 'محفظة كاش',
+          shortEn: 'Cash Wallet',
+          dotColor: 'bg-amber-400',
+          borderColor: 'border-amber-500/40',
+          textColor: 'text-amber-400',
+          transferValue: storeConfig.vfcNumber || DEFAULT_VFC_NUMBER,
+          recipientName: storeConfig.vfcRecipient || 'Bonka Store',
+          isUrl: (storeConfig.vfcNumber || '').startsWith('http')
+        },
+        {
+          id: 'instapay',
+          titleAr: 'إنستاباي (InstaPay)',
+          titleEn: 'InstaPay',
+          shortAr: 'إنستاباي',
+          shortEn: 'InstaPay',
+          dotColor: 'bg-cyan-400',
+          borderColor: 'border-cyan-500/40',
+          textColor: 'text-cyan-400',
+          transferValue: storeConfig.instapayAccount || DEFAULT_INSTAPAY_ACCOUNT,
+          recipientName: storeConfig.instapayRecipient || 'loaysameh12',
+          isUrl: (storeConfig.instapayAccount || DEFAULT_INSTAPAY_ACCOUNT).startsWith('http')
+        },
+        {
+          id: 'telda',
+          titleAr: 'تيلدا (Telda)',
+          titleEn: 'Telda',
+          shortAr: 'تيلدا',
+          shortEn: 'Telda',
+          dotColor: 'bg-purple-400',
+          borderColor: 'border-purple-500/40',
+          textColor: 'text-purple-400',
+          transferValue: storeConfig.teldaAccount || DEFAULT_TELDA_ACCOUNT,
+          recipientName: storeConfig.teldaRecipient || 'Bonka Store',
+          isUrl: (storeConfig.teldaAccount || '').startsWith('http')
+        }
+      ], [storeConfig]);
+
+      const selectedPaymentObj = useMemo(() => {
+        return paymentMethodsList.find(m => m.id === checkoutForm.paymentMethod) || paymentMethodsList[1];
+      }, [paymentMethodsList, checkoutForm.paymentMethod]);
+
+      const getPaymentMethodLabel = (methodId) => {
+        const found = paymentMethodsList.find(m => m.id === methodId);
+        return found ? found.titleAr : 'فودافون كاش / إنستا باي';
+      };
+
+      // Cart Totals + Promo Calculation
+      const cartTotals = useMemo(() => {
+        let subtotal = 0;
+        let retailTotal = 0;
+        let count = 0;
+        cart.forEach((item) => {
+          const liveGame = games.find((g) => g.id === item.gameId);
+          const qty = Number(item.quantity) || 1;
+          const price = liveGame
+            ? (item.licenseType === 'Primary' ? normalizeEgpPrice(liveGame.primaryPrice, 1100) : normalizeEgpPrice(liveGame.secondaryPrice, 650))
+            : normalizeEgpPrice(item.price, 750);
+          const retail = liveGame
+            ? normalizeEgpPrice(liveGame.retailPrice, 3200)
+            : normalizeEgpPrice(item.retailPrice, 3200);
+          subtotal += price * qty;
+          retailTotal += retail * qty;
+          count += qty;
+        });
+
+        let promoDiscount = 0;
+        if (appliedPromo && subtotal > 0) {
+          if (appliedPromo.discountType === 'percent') {
+            promoDiscount = Math.round((subtotal * Number(appliedPromo.discountValue)) / 100);
+          } else {
+            promoDiscount = Math.min(subtotal, Number(appliedPromo.discountValue) || 0);
+          }
+        }
+
+        const finalTotal = Math.max(0, subtotal - promoDiscount);
+
+        return {
+          subtotal,
+          retailTotal,
+          promoDiscount,
+          finalTotal,
+          totalSavings: Math.max(0, retailTotal - finalTotal),
+          count
+        };
+      }, [cart, games, appliedPromo]);
+
+      const handleApplyPromoCode = () => {
+        const clean = promoInput.trim().toUpperCase();
+        if (!clean) {
+          showToast(tr('أدخل كود الخصم أولاً', 'Enter a promo code first'), 'error');
+          return;
+        }
+        const match = promoCodes.find(p => p.code.toUpperCase() === clean && p.active !== false);
+        if (!match) {
+          showToast(tr('كود الخصم غير صحيح أو منتهي الصلاحية!', 'Invalid or expired promo code!'), 'error');
+          return;
+        }
+        setAppliedPromo(match);
+        showToast(
+          tr(
+            `تم تفعيل كود الخصم ${match.code} بنجاح!`,
+            `Promo code ${match.code} applied!`
+          )
+        );
+      };
+
+      // Instant Receipt Selection + Background Cloud Link Generation
+      const handleReceiptFileChange = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (!file.type.startsWith('image/')) {
+          showToast(tr('يرجى اختيار ملف صورة صالح (PNG, JPG, WEBP)', 'Please select a valid image file'), 'error');
+          return;
+        }
+        try {
+          const { dataUrl, blob } = await compressReceiptImage(file);
+          // Immediately show image & unlock submit button so it never blocks the buyer
+          setCheckoutForm((prev) => ({
+            ...prev,
+            receiptImage: dataUrl,
+            receiptFileName: file.name,
+            receiptHostedUrl: ''
+          }));
+          showToast(tr('تم إرفاق صورة التحويل بنجاح!', 'Transfer screenshot attached!'));
+
+          // Try generating a cloud link in the background (with a 4.5s timeout)
+          if (blob) {
+            setUploadingReceipt(true);
+            uploadReceiptWithTimeout(blob, file.name || 'receipt.jpg')
+              .then((hostedUrl) => {
+                if (hostedUrl) {
+                  setCheckoutForm((prev) => ({ ...prev, receiptHostedUrl: hostedUrl }));
+                }
+              })
+              .catch(() => {})
+              .finally(() => setUploadingReceipt(false));
+          }
+        } catch (err) {
+          showToast(tr('تعذر قراءة الصورة، حاول مرة أخرى', 'Failed to read image'), 'error');
+          setUploadingReceipt(false);
+        }
+      };
+
+      // Build the complete Order Text (including Order Number + Receipt Link)
+      const buildOrderConfirmationText = (order) => {
+        let parsedItems = [];
+        try {
+          parsedItems = JSON.parse(order.deliveredAccounts || '[]');
+        } catch (e) {
+          parsedItems = [];
+        }
+        const itemsLines = parsedItems
+          .map((item, idx) => `${idx + 1}. ${item.title} (${item.console} - ${item.licenseType === 'Primary' ? 'نسخة أساسي Primary' : 'نسخة ثانوي Secondary'}) - ${formatEGP(item.pricePaid, 'ar')}`)
+          .join('\n');
+
+        const promoLine = order.promoCode
+          ? `🏷️ *كود الخصم:* ${order.promoCode} (-${formatEGP(order.discountAmount || 0, 'ar')})\n`
+          : '';
+
+        const receiptLine = order.receiptHostedUrl
+          ? `📸 *رابط صورة إيصال الدفع:*\n${order.receiptHostedUrl}`
+          : `📸 *صورة إيصال الدفع:* تم رفعها في الموقع مع الطلب رقم ${order.orderNumber} (وسأرسل الصورة هنا في الشات أيضاً)`;
+
+        return `مرحباً إدارة متجر Bonka Store! 👋
+أريد تأكيد طلبي لألعاب البلايستيشن:
+
+🧾 *رقم الطلب:* ${order.orderNumber}
+👤 *الاسم الكامل:* ${order.customerName}
+📱 *رقم الواتساب:* ${order.whatsappNumber || 'غير مسجل'}
+💳 *طريقة الدفع:* ${getPaymentMethodLabel(order.paymentMethod)}
+${promoLine}💰 *الإجمالي المدفوع:* ${formatEGP(order.totalAmount, 'ar')}
+
+${receiptLine}
+
+📦 *الألعاب المطلوبة:*
+${itemsLines}
+
+يرجى تأكيد طلبي وفتح بيانات حساب البلايستيشن (QR Code)!`;
+      };
+
+      const buildWhatsAppUrl = (order) => {
+        const message = buildOrderConfirmationText(order);
+        return getWhatsAppDirectChatUrl(storeConfig.whatsappNumber, message);
+      };
+
+      const handleConfirmViaMessenger = async (order) => {
+        const fullMessage = buildOrderConfirmationText(order);
+        copyTextToClipboard(fullMessage, `fb_order_${order.id}`);
+        const targetMessengerUrl = sanitizeMessengerLink(storeConfig.storePageUrl || DEFAULT_FB_MESSENGER_URL);
+        window.open(targetMessengerUrl, '_blank', 'noopener,noreferrer');
+        if (!user || !order?.id) return;
+
+        const nextStatus = order.credentialsUnlocked ? order.status : tr('تم الفتح في فيسبوك ماسنجر - بانتظار الإدارة', 'Opened Messenger - Awaiting Admin');
+        if (!hasValidFirebase) {
+          const updated = orders.map(o => o.id === order.id ? { ...o, confirmationMethod: 'Facebook Messenger', customerClickedConfirm: true, status: nextStatus } : o);
+          setOrders(updated);
+          syncLocalState('orders', updated);
+          showToast(tr(`تم نسخ رسالة الطلب (${order.orderNumber})! الصقها وأرسل صورة التحويل في ماسنجر.`, `Order ${order.orderNumber} copied & Messenger opened!`));
+          return;
+        }
+
+        try {
+          await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'orders', order.id), {
+            confirmationMethod: 'Facebook Messenger',
+            customerClickedConfirm: true,
+            status: nextStatus
+          });
+          showToast(tr(`تم نسخ رسالة الطلب (${order.orderNumber})! الصقها وأرسل صورة التحويل في ماسنجر.`, `Order ${order.orderNumber} copied & Messenger opened!`));
+        } catch (err) {}
+      };
+
+      const handleConfirmViaWhatsApp = async (order) => {
+        const fullMessage = buildOrderConfirmationText(order);
+        copyTextToClipboard(fullMessage, `wa_order_${order.id}`);
+        const waUrl = buildWhatsAppUrl(order);
+        window.open(waUrl, '_blank', 'noopener,noreferrer');
+        if (!user || !order?.id) return;
+
+        const nextStatus = order.credentialsUnlocked ? order.status : tr('تم إرسال واتساب - بانتظار موافقة الإدارة', 'WhatsApp Sent - Awaiting Admin Approval');
+        if (!hasValidFirebase) {
+          const updated = orders.map(o => o.id === order.id ? { ...o, confirmationMethod: 'WhatsApp', customerClickedConfirm: true, status: nextStatus } : o);
+          setOrders(updated);
+          syncLocalState('orders', updated);
+          showToast(tr(`تم فتح واتساب مع تفاصيل الطلب رقم ${order.orderNumber}!`, `Opened WhatsApp with order ${order.orderNumber}!`));
+          return;
+        }
+
+        try {
+          await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'orders', order.id), {
+            confirmationMethod: 'WhatsApp',
+            customerClickedConfirm: true,
+            status: nextStatus
+          });
+          showToast(tr(`تم فتح واتساب مع تفاصيل الطلب رقم ${order.orderNumber}!`, `Opened WhatsApp with order ${order.orderNumber}!`));
+        } catch (err) {}
+      };
+
+      const handleAdminApproveAndUnlockOrder = async (order) => {
+        if (!user || !order?.id) return;
+        const updated = orders.map(o => o.id === order.id ? {
+          ...o,
+          credentialsUnlocked: true,
+          status: tr('تم التأكيد وفتح بيانات الحساب', 'Confirmed & Credentials Unlocked'),
+          confirmedAt: Date.now()
+        } : o);
+        setOrders(updated);
+        syncLocalState('orders', updated);
+
+        if (!hasValidFirebase) {
+          showToast(tr(`تم تأكيد الطلب ${order.orderNumber} وفتح بيانات الحساب للعميل ${order.customerName}!`, `Order ${order.orderNumber} confirmed and unlocked for ${order.customerName}!`));
+          return;
+        }
+
+        try {
+          await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'orders', order.id), {
+            credentialsUnlocked: true,
+            status: tr('تم التأكيد وفتح بيانات الحساب', 'Confirmed & Credentials Unlocked'),
+            confirmedAt: Date.now()
+          });
+          showToast(tr(`تم تأكيد الطلب ${order.orderNumber} وفتح بيانات الحساب للعميل ${order.customerName}!`, `Order ${order.orderNumber} confirmed and unlocked for ${order.customerName}!`));
+        } catch (err) {}
+      };
+
+      const handleSaveStoreSettings = async (e) => {
+        e.preventDefault();
+        if (!user) return;
+        if (!storeConfig.adminPin || storeConfig.adminPin.trim().length < 6) {
+          showToast(tr('يجب أن يتكون الكود السري للإدارة من 6 رموز على الأقل!', 'Secret Admin Code must be at least 6 characters!'), 'error');
+          return;
+        }
+        const normalizedUrl = sanitizeMessengerLink(storeConfig.storePageUrl.trim());
+        const nextCfg = {
+          whatsappNumber: extractWhatsAppPhone(storeConfig.whatsappNumber),
+          storePageUrl: normalizedUrl,
+          messengerUrl: normalizedUrl,
+          adminPin: storeConfig.adminPin.trim(),
+          vfcNumber: (storeConfig.vfcNumber || DEFAULT_VFC_NUMBER).trim(),
+          vfcRecipient: (storeConfig.vfcRecipient || 'Bonka Store').trim(),
+          instapayAccount: (storeConfig.instapayAccount || DEFAULT_INSTAPAY_ACCOUNT).trim(),
+          instapayRecipient: (storeConfig.instapayRecipient || 'loaysameh12').trim(),
+          teldaAccount: (storeConfig.teldaAccount || DEFAULT_TELDA_ACCOUNT).trim(),
+          teldaRecipient: (storeConfig.teldaRecipient || 'Bonka Store').trim(),
+          updatedAt: Date.now()
+        };
+
+        setStoreConfig(prev => ({ ...prev, ...nextCfg }));
+        syncLocalState('settings', nextCfg);
+
+        if (!hasValidFirebase) {
+          showToast(tr("تم حفظ أرقام الدفع والروابط والإعدادات بنجاح!", "Payment numbers, links & settings saved!"));
+          return;
+        }
+
+        try {
+          await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'store_settings', 'config'), nextCfg);
+          showToast(tr("تم حفظ أرقام الدفع والروابط والإعدادات بنجاح!", "Payment numbers, links & settings saved!"));
+        } catch (err) {}
+      };
+
+      // Admin Promo Codes Management
+      const handleAddPromoCode = async (e) => {
+        e.preventDefault();
+        const cleanCode = newPromoForm.code.trim().toUpperCase();
+        const val = Number(newPromoForm.discountValue);
+        if (!cleanCode || !val || val <= 0) {
+          showToast(tr('أدخل كود خصم وقيمة صحيحة', 'Enter a valid code and discount value'), 'error');
+          return;
+        }
+        const newPromo = {
+          id: 'promo_' + Date.now(),
+          code: cleanCode,
+          discountType: newPromoForm.discountType,
+          discountValue: val,
+          active: true,
+          createdAt: Date.now()
+        };
+        const updated = [newPromo, ...promoCodes.filter(p => p.code.toUpperCase() !== cleanCode)];
+        setPromoCodes(updated);
+        syncLocalState('promo_codes', updated);
+        setNewPromoForm({ code: '', discountType: 'percent', discountValue: 10 });
+
+        if (!hasValidFirebase) {
+          showToast(tr(`تم إضافة كود الخصم ${cleanCode} بنجاح!`, `Added promo code ${cleanCode}!`));
+          return;
+        }
+
+        try {
+          await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'promo_codes', newPromo.id), newPromo);
+          showToast(tr(`تم إضافة كود الخصم ${cleanCode} بنجاح!`, `Added promo code ${cleanCode}!`));
+        } catch (err) {}
+      };
+
+      const handleDeletePromoCode = async (promo) => {
+        const updated = promoCodes.filter(p => p.id !== promo.id);
+        setPromoCodes(updated);
+        syncLocalState('promo_codes', updated);
+        if (appliedPromo?.id === promo.id) setAppliedPromo(null);
+
+        if (!hasValidFirebase) {
+          showToast(tr('تم حذف كود الخصم', 'Promo code deleted'), 'info');
+          return;
+        }
+        try {
+          await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'promo_codes', promo.id));
+          showToast(tr('تم حذف كود الخصم', 'Promo code deleted'), 'info');
+        } catch (err) {}
+      };
+
+      const getSelectedLicenseForGame = (gameId) => {
+        return cardLicenseSelections[gameId] || globalLicensePreference;
+      };
+
+      const setLicenseForGame = (gameId, licenseType) => {
+        setCardLicenseSelections((prev) => ({ ...prev, [gameId]: licenseType }));
+      };
+
+      const handleGlobalLicenseSwitch = (licenseType) => {
+        setGlobalLicensePreference(licenseType);
+        setCardLicenseSelections({});
+        showToast(
+          tr(
+            `تم تحويل أسعار المتجر إلى وضع الحساب ${licenseType === 'Primary' ? 'الأساسي (Primary)' : 'الثانوي (Secondary)'}`,
+            `Switched store pricing to ${licenseType} Account Mode`
+          ),
+          'info'
+        );
+      };
+
+      const addToCart = async (game, explicitLicenseType = null) => {
+        if (!user) return;
+        const licenseType = explicitLicenseType || getSelectedLicenseForGame(game.id);
+        const unitPrice = licenseType === 'Primary' ? normalizeEgpPrice(game.primaryPrice, 1100) : normalizeEgpPrice(game.secondaryPrice, 650);
+        const availableStock = licenseType === 'Primary' ? Number(game.primaryStock) : Number(game.secondaryStock);
+
+        if (availableStock <= 0) {
+          showToast(
+            tr(
+              `نفدت كمية الحسابات (${licenseType === 'Primary' ? 'الأساسي' : 'الثانوي'}) للعبة ${game.title} حالياً!`,
+              `${licenseType} accounts for ${game.title} are currently out of stock!`
+            ),
+            'error'
+          );
+          return;
+        }
+
+        const cartItemId = `${game.id}_${licenseType}`;
+        const existingItem = cart.find((item) => item.id === cartItemId);
+
+        let updatedCart;
+        if (existingItem) {
+          if (existingItem.quantity + 1 > availableStock) {
+            showToast(tr(`الحد الأقصى المتاح هو (${availableStock}) حسابات`, `Maximum available stock is (${availableStock}) accounts`), 'error');
+            return;
+          }
+          updatedCart = cart.map(item => item.id === cartItemId ? { ...item, quantity: item.quantity + 1 } : item);
+        } else {
+          updatedCart = [...cart, {
+            id: cartItemId,
+            gameId: game.id,
+            title: game.title,
+            console: game.console,
+            genre: game.genre || 'Action / Adventure',
+            image: game.image,
+            licenseType,
+            price: unitPrice,
+            retailPrice: normalizeEgpPrice(game.retailPrice, 3200),
+            quantity: 1,
+            addedAt: Date.now()
+          }];
+        }
+        setCart(updatedCart);
+        syncLocalState('cart', updatedCart);
+
+        if (!hasValidFirebase) {
+          showToast(tr(`تمت إضافة ${game.title} إلى السلة!`, `Added ${game.title} to cart!`));
+          return;
+        }
+
+        try {
+          const itemRef = doc(db, 'artifacts', appId, 'users', user.uid, 'cart', cartItemId);
+          if (existingItem) {
+            await updateDoc(itemRef, { quantity: existingItem.quantity + 1 });
+          } else {
+            await setDoc(itemRef, {
+              gameId: game.id,
+              title: game.title,
+              console: game.console,
+              genre: game.genre || 'Action / Adventure',
+              image: game.image,
+              licenseType,
+              price: unitPrice,
+              retailPrice: normalizeEgpPrice(game.retailPrice, 3200),
+              quantity: 1,
+              addedAt: Date.now()
+            });
+          }
+          showToast(tr(`تمت إضافة ${game.title} إلى السلة!`, `Added ${game.title} to cart!`));
+        } catch (err) {}
+      };
+
+      const updateCartQuantity = async (cartItem, delta) => {
+        if (!user) return;
+        const newQty = (Number(cartItem.quantity) || 1) + delta;
+
+        const updated = newQty <= 0
+          ? cart.filter(i => i.id !== cartItem.id)
+          : cart.map(i => i.id === cartItem.id ? { ...i, quantity: newQty } : i);
+        setCart(updated);
+        syncLocalState('cart', updated);
+
+        if (!hasValidFirebase) return;
+
+        const itemRef = doc(db, 'artifacts', appId, 'users', user.uid, 'cart', cartItem.id);
+        try {
+          if (newQty <= 0) {
+            await deleteDoc(itemRef);
+          } else {
+            await updateDoc(itemRef, { quantity: newQty });
+          }
+        } catch (err) {}
+      };
+
+      const removeFromCart = async (cartItemId) => {
+        if (!user) return;
+        const updated = cart.filter(i => i.id !== cartItemId);
+        setCart(updated);
+        syncLocalState('cart', updated);
+
+        if (!hasValidFirebase) {
+          showToast(tr("تم حذف اللعبة من السلة", "Removed game from cart"), "info");
+          return;
+        }
+
+        try {
+          await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'cart', cartItemId));
+          showToast(tr("تم حذف اللعبة من السلة", "Removed game from cart"), "info");
+        } catch (err) {}
+      };
+
+      const handleDeleteGame = async (gameId, title) => {
+        if (!user || !gameId) return;
+        const nextGames = games.filter(g => g.id !== gameId);
+        const nextCart = cart.filter(c => c.gameId !== gameId);
+        setGames(nextGames);
+        setCart(nextCart);
+        syncLocalState('games', nextGames);
+        syncLocalState('cart', nextCart);
+        setGameToDeleteModal(null);
+        if (selectedGameModal?.id === gameId) setSelectedGameModal(null);
+
+        if (!hasValidFirebase) {
+          showToast(tr(`تم حذف لعبة "${title}" من المتجر نهائياً.`, `Removed "${title}" from the store.`), 'info');
+          return;
+        }
+
+        try {
+          await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId));
+          const matchingCartItems = cart.filter((c) => c.gameId === gameId);
+          for (const cItem of matchingCartItems) {
+            await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'cart', cItem.id));
+          }
+          showToast(tr(`تم حذف لعبة "${title}" من المتجر نهائياً.`, `Removed "${title}" from the store.`), 'info');
+        } catch (err) {}
+      };
+
+      const copyTextToClipboard = (text, idLabel) => {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+          document.execCommand('copy');
+          setCopiedId(idLabel);
+          setTimeout(() => setCopiedId(null), 2000);
+        } catch (err) {}
+        document.body.removeChild(textArea);
+      };
+
+      const handleCompleteCheckout = async (e) => {
+        e.preventDefault();
+        if (!user || cart.length === 0) return;
+        if (!checkoutForm.customerName.trim()) {
+          showToast(tr('يرجى إدخال الاسم الكامل', 'Please enter your full name'), 'error');
+          return;
+        }
+        if (!checkoutForm.receiptImage) {
+          showToast(tr('يرجى رفع صورة تأكيد التحويل أولاً!', 'Please upload a transfer confirmation screenshot first!'), 'error');
+          return;
+        }
+
+        setSubmittingOrder(true);
+        try {
+          const orderNumber = `BNK-${Math.floor(100000 + Math.random() * 900000)}`;
+          const deliveredAccounts = [];
+          const usedPoolIds = new Set();
+
+          for (const item of cart) {
+            const qty = Number(item.quantity) || 1;
+            const liveGame = games.find((g) => g.id === item.gameId);
+            const activeUnitPrice = liveGame
+              ? (item.licenseType === 'Primary' ? normalizeEgpPrice(liveGame.primaryPrice, 1100) : normalizeEgpPrice(liveGame.secondaryPrice, 650))
+              : normalizeEgpPrice(item.price, 750);
+
+            for (let i = 0; i < qty; i++) {
+              const matchingPoolAcc = accountPool.find(
+                (acc) =>
+                  acc.gameId === item.gameId &&
+                  acc.licenseType === item.licenseType &&
+                  acc.status === 'available' &&
+                  !usedPoolIds.has(acc.id)
+              );
+
+              if (matchingPoolAcc) {
+                usedPoolIds.add(matchingPoolAcc.id);
+                deliveredAccounts.push({
+                  gameId: item.gameId,
+                  title: liveGame?.title || item.title,
+                  console: liveGame?.console || item.console,
+                  image: liveGame?.image || item.image,
+                  licenseType: item.licenseType,
+                  pricePaid: activeUnitPrice,
+                  psnEmail: matchingPoolAcc.psnEmail,
+                  psnPassword: matchingPoolAcc.psnPassword,
+                  twoStepCode: matchingPoolAcc.twoStepCode,
+                  activationInstructions:
+                    matchingPoolAcc.notes ||
+                    generateVaultCredentials(liveGame?.title || item.title, item.licenseType).activationInstructions
+                });
+
+                if (hasValidFirebase) {
+                  await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'account_pool', matchingPoolAcc.id), {
+                    status: 'assigned',
+                    assignedOrderNumber: orderNumber,
+                    assignedToEmail: checkoutForm.whatsappNumber || checkoutForm.customerName,
+                    assignedAt: Date.now()
+                  });
+                }
+              } else {
+                const generated = generateVaultCredentials(liveGame?.title || item.title, item.licenseType);
+                deliveredAccounts.push({
+                  gameId: item.gameId,
+                  title: liveGame?.title || item.title,
+                  console: liveGame?.console || item.console,
+                  image: liveGame?.image || item.image,
+                  licenseType: item.licenseType,
+                  pricePaid: activeUnitPrice,
+                  ...generated
+                });
+              }
+            }
+
+            if (liveGame && hasValidFirebase) {
+              const stockField = item.licenseType === 'Primary' ? 'primaryStock' : 'secondaryStock';
+              const currentStock = Number(liveGame[stockField]) || 0;
+              await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'games', item.gameId), {
+                [stockField]: Math.max(0, currentStock - qty)
+              });
+            }
+          }
+
+          const newOrderData = {
+            orderNumber,
+            userId: user.uid,
+            customerName: checkoutForm.customerName.trim(),
+            customerEmail: '',
+            whatsappNumber: checkoutForm.whatsappNumber.trim(),
+            consoleModel: 'PS4 / PS5',
+            paymentMethod: checkoutForm.paymentMethod,
+            receiptImage: checkoutForm.receiptImage,
+            receiptHostedUrl: checkoutForm.receiptHostedUrl || '',
+            promoCode: appliedPromo ? appliedPromo.code : null,
+            discountAmount: cartTotals.promoDiscount || 0,
+            subtotalAmount: cartTotals.subtotal,
+            totalAmount: cartTotals.finalTotal,
+            totalSavings: cartTotals.totalSavings,
+            itemCount: cartTotals.count,
+            status: tr('تم إرفاق إيصال الدفع - بانتظار تأكيد واتساب / ماسنجر', 'Receipt Uploaded - Pending WhatsApp / Messenger'),
+            credentialsUnlocked: false,
+            deliveredAccounts: JSON.stringify(deliveredAccounts),
+            createdAt: Date.now()
+          };
+
+          const localOrder = { id: 'ord_' + Date.now(), ...newOrderData };
+          const nextOrders = [localOrder, ...orders];
+          setOrders(nextOrders);
+          syncLocalState('orders', nextOrders);
+
+          const nextPool = accountPool.map(acc => usedPoolIds.has(acc.id) ? {
+            ...acc,
+            status: 'assigned',
+            assignedOrderNumber: orderNumber,
+            assignedToEmail: checkoutForm.whatsappNumber || checkoutForm.customerName,
+            assignedAt: Date.now()
+          } : acc);
+          setAccountPool(nextPool);
+          syncLocalState('account_pool', nextPool);
+
+          const nextGames = games.map(g => {
+            const cartItemPrimary = cart.find(c => c.gameId === g.id && c.licenseType === 'Primary');
+            const cartItemSecondary = cart.find(c => c.gameId === g.id && c.licenseType === 'Secondary');
+            return {
+              ...g,
+              primaryStock: cartItemPrimary ? Math.max(0, Number(g.primaryStock) - cartItemPrimary.quantity) : g.primaryStock,
+              secondaryStock: cartItemSecondary ? Math.max(0, Number(g.secondaryStock) - cartItemSecondary.quantity) : g.secondaryStock
+            };
+          });
+          setGames(nextGames);
+          syncLocalState('games', nextGames);
+
+          setCart([]);
+          syncLocalState('cart', []);
+          setAppliedPromo(null);
+          setPromoInput('');
+          setCheckoutForm(prev => ({ ...prev, receiptImage: '', receiptHostedUrl: '', receiptFileName: '' }));
+
+          // Copy full order text to clipboard right away
+          copyTextToClipboard(buildOrderConfirmationText(localOrder), `order_copy_${localOrder.id}`);
+
+          if (!hasValidFirebase) {
+            setCheckoutModalOpen(false);
+            setCartOpen(false);
+            setActiveTab('orders');
+            setPostOrderModal(localOrder);
+            showToast(tr(`تم تسجيل طلبك ${orderNumber}! اضغط الآن على زر واتساب لإرسال الطلب والإيصال.`, `Order ${orderNumber} created! Click WhatsApp to send.`));
+            return;
+          }
+
+          const orderDocRef = await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'orders'), newOrderData);
+
+          for (const item of cart) {
+            await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'cart', item.id));
+          }
+
+          setCheckoutModalOpen(false);
+          setCartOpen(false);
+          setActiveTab('orders');
+          setPostOrderModal({ id: orderDocRef.id, ...newOrderData });
+          showToast(tr(`تم تسجيل طلبك ${orderNumber}! اضغط الآن على زر واتساب لإرسال الطلب والإيصال.`, `Order ${orderNumber} created! Click WhatsApp to send.`));
+        } catch (err) {
+          showToast(tr("حدث خطأ أثناء إتمام الطلب.", "Error completing order."), "error");
+        } finally {
+          setSubmittingOrder(false);
+        }
+      };
+
+      const resetGameForm = () => {
+        setEditingGameId(null);
+        setGameForm({
+          title: '',
+          console: 'PS5',
+          genre: 'Action / Adventure',
+          rating: 4.8,
+          releaseYear: 2024,
+          featured: false,
+          badge: 'New Arrival',
+          primaryPrice: 1200,
+          secondaryPrice: 700,
+          retailPrice: 3400,
+          primaryStock: 10,
+          secondaryStock: 10,
+          image: 'https://images.unsplash.com/photo-1607853202273-797f1c22a38e?auto=format&fit=crop&w=900&q=80',
+          description: ''
+        });
+      };
+
+      const startEditGame = (game) => {
+        setEditingGameId(game.id);
+        setGameForm({
+          title: game.title || '',
+          console: game.console || 'PS5',
+          genre: game.genre || 'Action / Adventure',
+          rating: game.rating || 4.8,
+          releaseYear: game.releaseYear || 2024,
+          featured: Boolean(game.featured),
+          badge: game.badge || 'Featured',
+          primaryPrice: normalizeEgpPrice(game.primaryPrice, 1100),
+          secondaryPrice: normalizeEgpPrice(game.secondaryPrice, 650),
+          retailPrice: normalizeEgpPrice(game.retailPrice, 3200),
+          primaryStock: Number(game.primaryStock) || 0,
+          secondaryStock: Number(game.secondaryStock) || 0,
+          image: game.image || '',
+          description: game.description || ''
+        });
+        setAdminSubTab('add');
+      };
+
+      const handleSaveGame = async (e) => {
+        e.preventDefault();
+        if (!user) return;
+        const payload = {
+          title: gameForm.title.trim(),
+          console: gameForm.console,
+          genre: gameForm.genre.trim(),
+          rating: Number(gameForm.rating) || 4.8,
+          releaseYear: Number(gameForm.releaseYear) || 2024,
+          featured: Boolean(gameForm.featured),
+          badge: gameForm.badge || 'New',
+          primaryPrice: Number(gameForm.primaryPrice) || 1100,
+          secondaryPrice: Number(gameForm.secondaryPrice) || 650,
+          retailPrice: Number(gameForm.retailPrice) || 3200,
+          primaryStock: Number(gameForm.primaryStock) || 0,
+          secondaryStock: Number(gameForm.secondaryStock) || 0,
+          image: gameForm.image.trim() || 'https://placehold.co/600x400/0f172a/38bdf8?text=PlayStation+Game',
+          description: gameForm.description.trim(),
+          updatedAt: Date.now()
+        };
+
+        let nextGames;
+        const targetId = editingGameId || `${(payload.title.toLowerCase().replace(/[^a-z0-9]/g, '-') || 'game')}-${Date.now().toString().slice(-4)}`;
+        if (editingGameId) {
+          nextGames = games.map(g => g.id === editingGameId ? { ...g, ...payload } : g);
+        } else {
+          const newGame = { id: targetId, ...payload, createdAt: Date.now() };
+          nextGames = [newGame, ...games];
+        }
+        setGames(nextGames);
+        syncLocalState('games', nextGames);
+
+        const updatedCart = cart.map((cItem) => {
+          if (cItem.gameId !== targetId) return cItem;
+          return {
+            ...cItem,
+            title: payload.title,
+            console: payload.console,
+            image: payload.image,
+            price: cItem.licenseType === 'Primary' ? payload.primaryPrice : payload.secondaryPrice,
+            retailPrice: payload.retailPrice
+          };
+        });
+        setCart(updatedCart);
+        syncLocalState('cart', updatedCart);
+
+        if (!hasValidFirebase) {
+          showToast(tr(`تم حفظ اللعبة بنجاح!`, `Game saved successfully!`));
+          resetGameForm();
+          setAdminSubTab('inventory');
+          return;
+        }
+
+        try {
+          if (editingGameId) {
+            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'games', editingGameId), payload);
+          } else {
+            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'games', targetId), {
+              ...payload,
+              createdAt: Date.now()
+            });
+          }
+          showToast(tr(`تم حفظ اللعبة بنجاح!`, `Game saved successfully!`));
+          resetGameForm();
+          setAdminSubTab('inventory');
+        } catch (err) {}
+      };
+
+      const handleAddAccountToVault = async (e) => {
+        e.preventDefault();
+        if (!user || !vaultForm.gameId) return;
+        const targetGame = games.find((g) => g.id === vaultForm.gameId);
+        if (!targetGame) return;
+
+        const newAcc = {
+          gameId: targetGame.id,
+          gameTitle: targetGame.title,
+          console: targetGame.console,
+          licenseType: vaultForm.licenseType,
+          psnEmail: vaultForm.psnEmail.trim(),
+          psnPassword: vaultForm.psnPassword.trim(),
+          twoStepCode: vaultForm.twoStepCode.trim(),
+          notes: vaultForm.notes?.trim() || '',
+          status: 'available',
+          createdAt: Date.now()
+        };
+
+        const nextPool = [{ id: 'vault_' + Date.now(), ...newAcc }, ...accountPool];
+        setAccountPool(nextPool);
+        syncLocalState('account_pool', nextPool);
+
+        const stockField = vaultForm.licenseType === 'Primary' ? 'primaryStock' : 'secondaryStock';
+        const nextGames = games.map(g => g.id === targetGame.id ? { ...g, [stockField]: (Number(g[stockField]) || 0) + 1 } : g);
+        setGames(nextGames);
+        syncLocalState('games', nextGames);
+
+        if (!hasValidFirebase) {
+          setVaultForm((prev) => ({ ...prev, psnEmail: '', psnPassword: '', twoStepCode: '', notes: '' }));
+          showToast(tr(`تم حفظ الحساب في الخزنة وزيادة مخزون ${targetGame.title} (+1)!`, `Saved account to Vault!`));
+          return;
+        }
+
+        try {
+          await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'account_pool'), newAcc);
+          const currentStock = Number(targetGame[stockField]) || 0;
+          await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'games', targetGame.id), {
+            [stockField]: currentStock + 1
+          });
+          setVaultForm((prev) => ({ ...prev, psnEmail: '', psnPassword: '', twoStepCode: '', notes: '' }));
+          showToast(tr(`تم حفظ الحساب في الخزنة وزيادة مخزون ${targetGame.title} (+1)!`, `Saved account to Vault!`));
+        } catch (err) {}
+      };
+
+      const handleDeleteVaultAccount = async (acc) => {
+        if (!user || !acc?.id) return;
+        const nextPool = accountPool.filter(a => a.id !== acc.id);
+        setAccountPool(nextPool);
+        syncLocalState('account_pool', nextPool);
+
+        if (!hasValidFirebase) {
+          showToast(tr("تم حذف الحساب من الخزنة.", "Removed account from vault."), "info");
+          return;
+        }
+
+        try {
+          await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'account_pool', acc.id));
+          showToast(tr("تم حذف الحساب من الخزنة.", "Removed account from vault."), "info");
+        } catch (err) {}
+      };
+
+      const openManageOrderCredentials = (order) => {
+        let parsed = [];
+        try {
+          parsed = JSON.parse(order.deliveredAccounts || '[]');
+        } catch (e) {
+          parsed = [];
+        }
+        setEditableOrderAccounts(parsed);
+        setManagingOrderModal(order);
+      };
+
+      const handleUpdateOrderCredentialField = (index, field, value) => {
+        setEditableOrderAccounts((prev) => {
+          const updated = [...prev];
+          updated[index] = { ...updated[index], [field]: value };
+          return updated;
+        });
+      };
+
+      const handleSaveDispatchedCredentials = async (e) => {
+        e.preventDefault();
+        if (!user || !managingOrderModal) return;
+
+        const nextOrders = orders.map(o => o.id === managingOrderModal.id ? {
+          ...o,
+          deliveredAccounts: JSON.stringify(editableOrderAccounts),
+          credentialsUnlocked: true,
+          status: tr('تم التأكيد وإرسال الـ QR Code', 'Confirmed & QR Code Sent'),
+          confirmedAt: Date.now()
+        } : o);
+        setOrders(nextOrders);
+        syncLocalState('orders', nextOrders);
+
+        if (!hasValidFirebase) {
+          setManagingOrderModal(null);
+          showToast(tr(`تم إرسال الـ QR Code للطلب ${managingOrderModal.orderNumber}!`, `QR Code sent!`));
+          return;
+        }
+
+        try {
+          await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'orders', managingOrderModal.id), {
+            deliveredAccounts: JSON.stringify(editableOrderAccounts),
+            credentialsUnlocked: true,
+            status: tr('تم التأكيد وإرسال الـ QR Code', 'Confirmed & QR Code Sent'),
+            confirmedAt: Date.now()
+          });
+          setManagingOrderModal(null);
+          showToast(tr(`تم إرسال الـ QR Code للطلب ${managingOrderModal.orderNumber}!`, `QR Code sent!`));
+        } catch (err) {}
+      };
+
+      const genresList = useMemo(() => {
+        const set = new Set(['ALL']);
+        games.forEach((g) => { if (g.genre) set.add(g.genre); });
+        return Array.from(set);
+      }, [games]);
+
+      const filteredGames = useMemo(() => {
+        return games
+          .filter((game) => {
+            const matchesSearch =
+              game.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              game.genre?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              game.description?.toLowerCase().includes(searchQuery.toLowerCase());
+
+            const matchesConsole =
+              consoleFilter === 'ALL' ||
+              (consoleFilter === 'PS5' && game.console?.includes('PS5')) ||
+              (consoleFilter === 'PS4' && game.console?.includes('PS4'));
+
+            const matchesGenre = genreFilter === 'ALL' || game.genre === genreFilter;
+
+            return matchesSearch && matchesConsole && matchesGenre;
+          })
+          .sort((a, b) => {
+            const priceA = globalLicensePreference === 'Primary' ? a.primaryPrice : a.secondaryPrice;
+            const priceB = globalLicensePreference === 'Primary' ? b.primaryPrice : b.secondaryPrice;
+
+            if (sortBy === 'price-asc') return priceA - priceB;
+            if (sortBy === 'price-desc') return priceB - priceA;
+            if (sortBy === 'rating') return (b.rating || 0) - (a.rating || 0);
+            return (b.featured ? 1 : 0) - (a.featured ? 1 : 0);
+          });
+      }, [games, searchQuery, consoleFilter, genreFilter, sortBy, globalLicensePreference]);
+
+      const myOrders = useMemo(() => {
+        if (!user) return [];
+        return orders.filter((o) => o.userId === user.uid);
+      }, [orders, user]);
+
+      const activeMessengerHref = sanitizeMessengerLink(storeConfig.storePageUrl || DEFAULT_FB_MESSENGER_URL);
+      const activeWhatsAppHref = getWhatsAppDirectChatUrl(storeConfig.whatsappNumber);
+
+      return (
+        <div
+          dir={isAr ? 'rtl' : 'ltr'}
+          className={`min-h-screen bg-[#060913] text-slate-100 font-sans selection:bg-cyan-500 selection:text-slate-950 ${
+            isAr ? 'text-right' : 'text-left'
+          }`}
+        >
+          {/* Top Announcement Marquee */}
+          <div className="bg-gradient-to-r from-blue-900/90 via-indigo-900/90 to-blue-900/90 border-b border-white/10 px-4 py-1.5 text-[11px] sm:text-xs font-bold text-blue-100">
+            <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span>
+                  {tr(
+                    'مرحباً بك في Bonka Store الرسمي • تسليم فوري لحسابات PS4 و PS5 بضمان كامل مدى الحياة',
+                    'Welcome to Official Bonka Store • Instant PS4 & PS5 Account Delivery with Lifetime Warranty'
+                  )}
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="hidden md:inline text-cyan-300">
+                  {tr('فودافون كاش • إنستا باي • تيلدا', 'Vodafone Cash • InstaPay • Telda')}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Admin Control Bar */}
+          {isAdminAuthenticated && (
+            <div className="sticky top-0 z-50 bg-slate-950/95 border-b border-blue-500/35 backdrop-blur-xl px-3 sm:px-6 py-2">
+              <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-500/15 border border-blue-500/30 text-blue-300 text-[11px] font-bold">
+                    <Eye className="w-3.5 h-3.5 text-blue-400" />
+                    <span>{tr('وضع الإدارة مفعل:', 'Admin Mode Active:')}</span>
+                  </span>
+
+                  <button
+                    onClick={handleAdminLogout}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 text-[11px] font-bold transition-all"
+                  >
+                    <Lock className="w-3.5 h-3.5" />
+                    <span>{tr('قفل وضع الإدارة', 'Lock Admin')}</span>
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-1.5 bg-slate-900 p-1 rounded-xl border border-white/10">
+                  <button
+                    onClick={() => setPreviewDevice('pc')}
+                    className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                      previewDevice === 'pc' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Monitor className="w-3.5 h-3.5" />
+                    <span>{tr('كمبيوتر', 'PC')}</span>
+                  </button>
+                  <button
+                    onClick={() => setPreviewDevice('mobile')}
+                    className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                      previewDevice === 'mobile' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Smartphone className="w-3.5 h-3.5" />
+                    <span>{tr('موبايل', 'Mobile')}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Device Simulator Wrapper */}
+          <div
+            className={
+              previewDevice === 'mobile'
+                ? 'py-6 px-2 sm:px-4 flex flex-col items-center justify-start bg-[#03050a] min-h-[calc(100vh-48px)]'
+                : ''
+            }
+          >
+            <div
+              className={
+                previewDevice === 'mobile'
+                  ? 'w-full max-w-[400px] h-[820px] rounded-[44px] border-[10px] border-slate-800 bg-[#060913] shadow-[0_0_80px_rgba(37,99,235,0.25)] overflow-y-auto overflow-x-hidden relative ring-1 ring-white/15'
+                  : 'w-full'
+              }
+            >
+              {previewDevice === 'mobile' && (
+                <div className="sticky top-0 z-50 bg-slate-950/90 backdrop-blur-md px-6 py-1.5 flex items-center justify-between text-[11px] font-bold text-slate-300 border-b border-white/5">
+                  <span>9:41</span>
+                  <div className="w-24 h-4 rounded-full bg-black border border-white/10" />
+                  <span className="text-[10px] text-emerald-400">5G • 100%</span>
+                </div>
+              )}
+
+              {/* Ambient Glow */}
+              <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+                <div className="absolute -top-40 -left-40 w-96 h-96 bg-blue-600/15 rounded-full blur-[130px]" />
+                <div className="absolute top-1/3 -right-40 w-96 h-96 bg-cyan-600/10 rounded-full blur-[140px]" />
+              </div>
+
+              {/* Toast */}
+              {toast && (
+                <div className={`fixed bottom-6 ${isAr ? 'right-6' : 'left-6'} z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl border backdrop-blur-xl animate-bounce bg-slate-900/95 border-cyan-500/40 text-white max-w-md`}>
+                  {toast.type === 'error' ? (
+                    <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />
+                  ) : toast.type === 'info' ? (
+                    <Info className="w-5 h-5 text-sky-400 shrink-0" />
+                  ) : (
+                    <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                  )}
+                  <span className="text-sm font-medium">{toast.message}</span>
+                </div>
+              )}
+
+              {/* Navbar */}
+              <header className="sticky top-0 z-40 border-b border-white/10 bg-[#060913]/85 backdrop-blur-xl">
+                <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${previewDevice === 'mobile' ? 'py-3 flex-wrap' : 'h-20'} flex items-center justify-between gap-3`}>
+                  <div 
+                    onClick={() => setActiveTab('store')}
+                    className="flex items-center gap-2.5 cursor-pointer group shrink-0 select-none"
+                  >
+                    <div className={`${previewDevice === 'mobile' ? 'w-9 h-9' : 'w-11 h-11'} rounded-2xl bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-800 flex items-center justify-center shadow-lg shadow-blue-600/30 group-hover:scale-105 transition-transform`}>
+                      <Gamepad2 className={`${previewDevice === 'mobile' ? 'w-5 h-5' : 'w-6 h-6'} text-white`} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className={`font-extrabold ${previewDevice === 'mobile' ? 'text-base' : 'text-lg sm:text-xl'} tracking-tight bg-gradient-to-r from-white via-blue-100 to-blue-400 bg-clip-text text-transparent`}>
+                          BONKA STORE
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <nav className={`flex items-center gap-1 bg-slate-900/90 p-1 rounded-2xl border border-white/10 ${previewDevice === 'mobile' ? 'order-3 w-full justify-around mt-1' : ''}`}>
+                    <button
+                      onClick={() => setActiveTab('store')}
+                      className={`px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 ${
+                        activeTab === 'store' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-300 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      <span>{tr('المتجر', 'Store')}</span>
+                    </button>
+
+                    <button
+                      onClick={() => setActiveTab('guide')}
+                      className={`px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 ${
+                        activeTab === 'guide' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-300 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      <ShieldCheck className="w-4 h-4" />
+                      <span>{tr('الدليل', 'Guide')}</span>
+                    </button>
+
+                    <button
+                      onClick={() => setActiveTab('orders')}
+                      className={`px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 relative ${
+                        activeTab === 'orders' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-300 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      <KeyRound className="w-4 h-4" />
+                      <span>{tr('خزنتي', 'My Vault')}</span>
+                      {myOrders.length > 0 && (
+                        <span className="px-1.5 py-0.2 text-[10px] rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                          {myOrders.length}
+                        </span>
+                      )}
+                    </button>
+
+                    {!isCustomerViewOnly && (
+                      <button
+                        onClick={() => setActiveTab('admin')}
+                        className={`px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 ${
+                          activeTab === 'admin' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-300 hover:text-white hover:bg-white/5'
+                        }`}
+                      >
+                        <SlidersHorizontal className="w-4 h-4" />
+                        <span>{tr('الإدارة', 'Admin')}</span>
+                      </button>
+                    )}
+                  </nav>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        const nextLang = lang === 'ar' ? 'en' : 'ar';
+                        setLang(nextLang);
+                        showToast(nextLang === 'en' ? 'Switched language to English' : 'تم تغيير اللغة إلى العربية', 'info');
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-white/15 text-xs font-extrabold text-white transition-all shadow-sm"
+                    >
+                      <Globe className="w-4 h-4 text-blue-400" />
+                      <span>{lang === 'ar' ? 'EN' : 'عربي'}</span>
+                    </button>
+
+                    <a
+                      href={activeMessengerHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hidden xl:flex items-center gap-1.5 px-3 py-2.5 rounded-2xl bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/40 text-blue-300 text-xs font-bold transition-all"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      <span>{tr('ماسنجر', 'Messenger')}</span>
+                    </a>
+
+                    <a
+                      href={activeWhatsAppHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hidden lg:flex items-center gap-1.5 px-3 py-2.5 rounded-2xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 text-xs font-bold transition-all"
+                    >
+                      <PhoneCall className="w-3.5 h-3.5" />
+                      <span>{tr('واتساب', 'WhatsApp')}</span>
+                    </a>
+
+                    <button
+                      onClick={() => {
+                        setCheckoutModalOpen(false);
+                        setCartOpen(true);
+                      }}
+                      className="relative flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold text-sm shadow-lg shadow-blue-600/25 transition-all"
+                    >
+                      <ShoppingCart className="w-4 h-4" />
+                      <span className="hidden sm:inline">{formatEGP(cartTotals.finalTotal, lang)}</span>
+                      <span className="px-2 py-0.5 text-xs rounded-full bg-black/30 font-bold">
+                        {cartTotals.count}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              </header>
+
+              {/* Main Container */}
+              <main className={`relative z-10 max-w-7xl mx-auto ${previewDevice === 'mobile' ? 'px-3 py-4' : 'px-4 sm:px-6 lg:px-8 py-8'}`}>
+                {activeTab === 'store' && (
+                  <div className="space-y-8">
+                    {/* Hero */}
+                    <div className={`relative rounded-3xl overflow-hidden border border-white/10 bg-gradient-to-br from-slate-900 via-[#0b132b] to-indigo-950 ${previewDevice === 'mobile' ? 'p-4' : 'p-6 sm:p-10'} shadow-2xl`}>
+                      <div className={`grid grid-cols-1 ${previewDevice === 'mobile' ? 'gap-5' : 'lg:grid-cols-12 gap-8'} items-center`}>
+                        <div className={`${previewDevice === 'mobile' ? '' : 'lg:col-span-7'} space-y-4`}>
+                          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/15 border border-blue-400/30 text-blue-300 text-[11px] font-semibold">
+                            <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                            <span>{tr('تسليم فوري للـ QR Code • خصومات حتى 75%', 'Instant QR Code Delivery • Up to 75% Off')}</span>
+                          </div>
+                          <h1 className={`${previewDevice === 'mobile' ? 'text-2xl' : 'text-3xl sm:text-5xl'} font-black tracking-tight text-white leading-tight`}>
+                            {tr('العب أقوى ألعاب PS4 و PS5 ', 'Play Top PS4 & PS5 Games ')}
+                            <span className="bg-gradient-to-r from-blue-400 via-cyan-300 to-indigo-400 bg-clip-text text-transparent">
+                              {tr('بأقل الأسعار في مصر والوطن العربي.', 'At the Best Prices.')}
+                            </span>
+                          </h1>
+                          <p className="text-slate-300 text-sm sm:text-base max-w-2xl leading-relaxed">
+                            {tr(
+                              'اختر بين حساب أساسي (Primary) للعب من إيميلك الشخصي، أو حساب ثانوي (Secondary) بأرخص سعر.',
+                              'Choose between Primary and Secondary accounts.'
+                            )}
+                          </p>
+
+                          <div className="pt-2 flex flex-col sm:flex-row sm:items-center gap-3">
+                            <div className={`inline-flex p-1.5 rounded-2xl bg-slate-950/90 border border-white/15 ${previewDevice === 'mobile' ? 'flex-col w-full gap-1' : ''}`}>
+                              <button
+                                onClick={() => handleGlobalLicenseSwitch('Primary')}
+                                className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+                                  globalLicensePreference === 'Primary' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'
+                                }`}
+                              >
+                                <ShieldCheck className="w-4 h-4" />
+                                <span>{tr('الحساب الأساسي (Primary)', 'Primary Account')}</span>
+                              </button>
+                              <button
+                                onClick={() => handleGlobalLicenseSwitch('Secondary')}
+                                className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+                                  globalLicensePreference === 'Secondary' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'
+                                }`}
+                              >
+                                <KeyRound className="w-4 h-4" />
+                                <span>{tr('الحساب الثانوي (Secondary)', 'Secondary Account')}</span>
+                              </button>
+                            </div>
+
+                            <button
+                              onClick={() => setActiveTab('guide')}
+                              className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-blue-400 hover:text-blue-300"
+                            >
+                              <Info className="w-4 h-4" />
+                              <span>{tr('ما الفرق بين الأساسي والثانوي؟', 'Primary vs Secondary?')}</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className={previewDevice === 'mobile' ? '' : 'lg:col-span-5'}>
+                          <div className="rounded-2xl bg-slate-950/80 border border-white/10 p-5 space-y-4 backdrop-blur-md">
+                            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                                {tr('الوضع المختار حالياً', 'Active Mode')}
+                              </span>
+                              <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                                globalLicensePreference === 'Primary' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40' : 'bg-purple-500/20 text-purple-300 border border-purple-500/40'
+                              }`}>
+                                {globalLicensePreference === 'Primary' ? tr('حساب أساسي', 'Primary') : tr('حساب ثانوي', 'Secondary')}
+                              </span>
+                            </div>
+
+                            <ul className="space-y-2.5 text-xs sm:text-sm text-slate-200">
+                              <li className="flex items-center gap-2.5">
+                                <UserCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                                <span>{tr('تسليم فوري آمن ومباشر', 'Instant secure delivery')}</span>
+                              </li>
+                              <li className="flex items-center gap-2.5">
+                                <Trophy className="w-4 h-4 text-amber-400 shrink-0" />
+                                <span>{tr('ضمان كامل مدى الحياة', 'Full lifetime warranty')}</span>
+                              </li>
+                              <li className="flex items-center gap-2.5">
+                                <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                                <span>{tr('دفع سهل عبر فودافون كاش أو إنستاباي أو تيلدا', 'Easy payment via VF Cash, InstaPay, or Telda')}</span>
+                              </li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Search & Filter Bar */}
+                    <div className="rounded-2xl bg-slate-900/80 border border-white/10 p-4 sm:p-5 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+                      <div className="relative flex-1">
+                        <Search className={`w-4 h-4 text-slate-400 absolute ${isAr ? 'right-4' : 'left-4'} top-1/2 -translate-y-1/2`} />
+                        <input
+                          type="text"
+                          value={searchQuery}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val.trim() === SECRET_SEARCH_TRIGGER) {
+                              setSearchQuery('');
+                              setAdminPinModalOpen(true);
+                              return;
+                            }
+                            setSearchQuery(val);
+                          }}
+                          placeholder={tr('ابحث عن ألعاب PS5 و PS4 بالاسم أو التصنيف...', 'Search PS5 & PS4 games...')}
+                          className={`w-full ${isAr ? 'pr-11 pl-4' : 'pl-11 pr-4'} py-2.5 rounded-xl bg-slate-950 border border-white/10 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500`}
+                        />
+                        {searchQuery && (
+                          <button
+                            onClick={() => setSearchQuery('')}
+                            className={`absolute ${isAr ? 'left-3' : 'right-3'} top-1/2 -translate-y-1/2 text-slate-400 hover:text-white`}
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        {['ALL', 'PS5', 'PS4'].map((cType) => (
+                          <button
+                            key={cType}
+                            onClick={() => setConsoleFilter(cType)}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                              consoleFilter === cType ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-950 text-slate-400 hover:text-white border border-white/10'
+                            }`}
+                          >
+                            {cType === 'ALL' ? tr('كل الأجهزة', 'All Consoles') : cType}
+                          </button>
+                        ))}
+
+                        <select
+                          value={genreFilter}
+                          onChange={(e) => setGenreFilter(e.target.value)}
+                          className="px-3.5 py-2 rounded-xl bg-slate-950 border border-white/10 text-xs font-semibold text-slate-200 focus:outline-none focus:border-blue-500"
+                        >
+                          {genresList.map((g) => (
+                            <option key={g} value={g}>{g === 'ALL' ? tr('كل التصنيفات', 'All Genres') : g}</option>
+                          ))}
+                        </select>
+
+                        <select
+                          value={sortBy}
+                          onChange={(e) => setSortBy(e.target.value)}
+                          className="px-3.5 py-2 rounded-xl bg-slate-950 border border-white/10 text-xs font-semibold text-slate-200 focus:outline-none focus:border-blue-500"
+                        >
+                          <option value="featured">{tr('الأكثر تميزاً', 'Featured')}</option>
+                          <option value="price-asc">{tr('السعر: من الأقل للأعلى', 'Price: Low to High')}</option>
+                          <option value="price-desc">{tr('السعر: من الأعلى للأقل', 'Price: High to Low')}</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {loadingData ? (
+                      <div className="py-20 text-center space-y-4">
+                        <RefreshCw className="w-10 h-10 text-blue-500 animate-spin mx-auto" />
+                        <p className="text-slate-400 text-sm">{tr('جاري تحميل الألعاب...', 'Loading games...')}</p>
+                      </div>
+                    ) : filteredGames.length === 0 ? (
+                      <div className="rounded-3xl bg-slate-900/50 border border-white/10 p-12 text-center space-y-4">
+                        <Gamepad2 className="w-12 h-12 text-slate-500 mx-auto" />
+                        <h3 className="text-lg font-bold text-white">{tr('لا توجد ألعاب مطابقة لبحثك', 'No matching games')}</h3>
+                        <button
+                          onClick={() => { setSearchQuery(''); setConsoleFilter('ALL'); setGenreFilter('ALL'); }}
+                          className="px-5 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold"
+                        >
+                          {tr('إعادة ضبط الفلاتر', 'Reset Filters')}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className={`grid grid-cols-1 ${previewDevice === 'mobile' ? 'gap-4' : 'md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'}`}>
+                        {filteredGames.map((game) => {
+                          const selectedLicense = getSelectedLicenseForGame(game.id);
+                          const activePrice = selectedLicense === 'Primary' 
+                            ? normalizeEgpPrice(game.primaryPrice, 1100) 
+                            : normalizeEgpPrice(game.secondaryPrice, 650);
+                          const retailPrice = normalizeEgpPrice(game.retailPrice, 3200);
+                          const discountPercent = Math.round(((retailPrice - activePrice) / retailPrice) * 100);
+                          const activeStock = selectedLicense === 'Primary' ? Number(game.primaryStock) : Number(game.secondaryStock);
+
+                          return (
+                            <div
+                              key={game.id}
+                              className="group rounded-3xl bg-slate-900/90 border border-white/10 hover:border-blue-500/50 overflow-hidden flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl"
+                            >
+                              <div>
+                                <div className="relative h-52 overflow-hidden bg-slate-950">
+                                  <img
+                                    src={game.image}
+                                    alt={game.title}
+                                    onError={(e) => {
+                                      e.target.onerror = null;
+                                      e.target.src = "https://placehold.co/600x400/0f172a/38bdf8?text=PlayStation+Game";
+                                    }}
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-85"
+                                  />
+                                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/30 to-transparent" />
+
+                                  <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2">
+                                    <span className="px-2.5 py-1 rounded-lg text-[11px] font-black tracking-wider uppercase bg-white/90 text-slate-950 border border-white">
+                                      {game.console}
+                                    </span>
+                                    {discountPercent > 0 && (
+                                      <span className="px-2.5 py-1 rounded-lg text-[11px] font-extrabold bg-emerald-500/90 text-slate-950">
+                                        {`-${discountPercent}%`}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <div className={`absolute bottom-3 ${isAr ? 'left-3' : 'right-3'} flex items-center gap-1.5`}>
+                                    <button
+                                      onClick={() => setSelectedGameModal(game)}
+                                      className="p-2 rounded-xl bg-slate-950/80 hover:bg-blue-600 text-slate-200 hover:text-white border border-white/15 backdrop-blur-md transition-colors"
+                                    >
+                                      <Eye className="w-4 h-4" />
+                                    </button>
+                                    {!isCustomerViewOnly && (
+                                      <button
+                                        onClick={() => setGameToDeleteModal(game)}
+                                        className="p-2 rounded-xl bg-slate-950/80 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/30 backdrop-blur-md transition-colors"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="p-5 space-y-4">
+                                  <div>
+                                    <h3 
+                                      onClick={() => setSelectedGameModal(game)}
+                                      className="font-bold text-lg text-white group-hover:text-blue-400 transition-colors line-clamp-1 cursor-pointer"
+                                    >
+                                      {game.title}
+                                    </h3>
+                                    <p className="text-xs text-slate-400 line-clamp-2 mt-1 leading-relaxed">
+                                      {game.description}
+                                    </p>
+                                  </div>
+
+                                  <div className="space-y-2">
+                                    <div className="flex items-center justify-between text-[11px] text-slate-400">
+                                      <span className="font-semibold">{tr('اختر نوع الحساب:', 'Select Edition:')}</span>
+                                      <span className={activeStock > 0 ? 'text-emerald-400 font-semibold' : 'text-rose-400 font-semibold'}>
+                                        {activeStock > 0 ? tr(`متاح (${activeStock})`, `${activeStock} Available`) : tr('نفدت الكمية', 'Sold Out')}
+                                      </span>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-slate-950 border border-white/10">
+                                      <button
+                                        type="button"
+                                        onClick={() => setLicenseForGame(game.id, 'Primary')}
+                                        className={`py-2 px-2.5 rounded-lg ${isAr ? 'text-right' : 'text-left'} transition-all ${
+                                          selectedLicense === 'Primary' ? 'bg-blue-600/25 border border-blue-500 text-white' : 'text-slate-400 hover:text-slate-200 border border-transparent'
+                                        }`}
+                                      >
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-[11px] font-bold">{tr('أساسي', 'Primary')}</span>
+                                          <span className="text-xs font-extrabold text-blue-300">{formatEGP(game.primaryPrice, lang)}</span>
+                                        </div>
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => setLicenseForGame(game.id, 'Secondary')}
+                                        className={`py-2 px-2.5 rounded-lg ${isAr ? 'text-right' : 'text-left'} transition-all ${
+                                          selectedLicense === 'Secondary' ? 'bg-purple-600/25 border border-purple-500 text-white' : 'text-slate-400 hover:text-slate-200 border border-transparent'
+                                        }`}
+                                      >
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-[11px] font-bold">{tr('ثانوي', 'Secondary')}</span>
+                                          <span className="text-xs font-extrabold text-purple-300">{formatEGP(game.secondaryPrice, lang)}</span>
+                                        </div>
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="px-5 pb-5 pt-2 flex items-center justify-between gap-3 border-t border-white/5">
+                                <div>
+                                  <span className="text-[11px] text-slate-500 line-through block">{formatEGP(retailPrice, lang)}</span>
+                                  <span className="text-xl font-black text-white">{formatEGP(activePrice, lang)}</span>
+                                </div>
+
+                                <button
+                                  onClick={() => addToCart(game, selectedLicense)}
+                                  disabled={activeStock <= 0}
+                                  className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all ${
+                                    activeStock <= 0 ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/25'
+                                  }`}
+                                >
+                                  <ShoppingCart className="w-4 h-4" />
+                                  <span>{activeStock <= 0 ? tr('نفدت الكمية', 'Sold Out') : tr('أضف للسلة', 'Add')}</span>
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'guide' && (
+                  <div className="space-y-10 max-w-5xl mx-auto">
+                    <div className="text-center space-y-3">
+                      <span className="px-3.5 py-1.5 rounded-full bg-blue-500/15 border border-blue-400/30 text-blue-300 text-xs font-bold uppercase tracking-wider">
+                        {tr('دليل ألعاب البلايستيشن', 'PlayStation Guide')}
+                      </span>
+                      <h2 className="text-3xl sm:text-4xl font-black text-white">
+                        {tr('الفرق بين الحساب الأساسي والثانوي', 'Primary vs Secondary Account')}
+                      </h2>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="rounded-3xl bg-slate-900 border-2 border-blue-500/40 p-7 space-y-4">
+                        <h3 className="text-xl font-black text-white">{tr('الحساب الأساسي (Primary)', 'Primary Account')}</h3>
+                        <p className="text-sm text-slate-300 leading-relaxed">
+                          {tr('تفعيل مشاركة الجهاز واللعب من حسابك الشخصي وجمع التروفيز واللعب أوفلاين وأونلاين بضمان كامل.', 'Play from your own PSN profile with full offline/online support and trophies.')}
+                        </p>
+                      </div>
+                      <div className="rounded-3xl bg-slate-900 border-2 border-purple-500/40 p-7 space-y-4">
+                        <h3 className="text-xl font-black text-white">{tr('الحساب الثانوي (Secondary)', 'Secondary Account')}</h3>
+                        <p className="text-sm text-slate-300 leading-relaxed">
+                          {tr('اللعب مباشرة من داخل الحساب المرسل مع وجود اتصال بالإنترنت بأرخص سعر.', 'Play directly inside the delivered profile with an internet connection.')}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 'orders' && (
+                  <div className="space-y-8 max-w-5xl mx-auto">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-6">
+                      <div>
+                        <h2 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-3">
+                          <KeyRound className="w-7 h-7 text-blue-400" />
+                          <span>{tr('خزنتي الرقمية وسجل طلباتي', 'My Digital Vault')}</span>
+                        </h2>
+                      </div>
+                    </div>
+
+                    {myOrders.length === 0 ? (
+                      <div className="rounded-3xl bg-slate-900/60 border border-white/10 p-12 text-center space-y-4">
+                        <Package className="w-12 h-12 text-slate-500 mx-auto" />
+                        <h3 className="text-lg font-bold text-white">{tr('خزنتك الرقمية فارغة حالياً', 'Your Digital Vault is Empty')}</h3>
+                        <button
+                          onClick={() => setActiveTab('store')}
+                          className="px-5 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold"
+                        >
+                          {tr('تصفح المتجر', 'Browse Store')}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-6">
+                        {myOrders.map((order) => {
+                          let parsedAccounts = [];
+                          try { parsedAccounts = JSON.parse(order.deliveredAccounts || '[]'); } catch (e) { parsedAccounts = []; }
+
+                          return (
+                            <div key={order.id} className="rounded-3xl bg-slate-900/90 border border-white/10 overflow-hidden shadow-xl">
+                              <div className="bg-slate-950/90 px-6 py-4 border-b border-white/10 flex flex-wrap items-center justify-between gap-4">
+                                <div className="flex items-center gap-4">
+                                  <div>
+                                    <span className="text-[10px] text-slate-400 block">{tr('رقم الطلب', 'Order ID')}</span>
+                                    <span className="font-mono font-bold text-sm text-cyan-400">{order.orderNumber}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-[10px] text-slate-400 block">{tr('طريقة الدفع', 'Payment')}</span>
+                                    <span className="text-xs font-bold text-white">{getPaymentMethodLabel(order.paymentMethod)}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-[10px] text-slate-400 block">{tr('الإجمالي', 'Total')}</span>
+                                    <span className="text-xs font-black text-emerald-400">{formatEGP(order.totalAmount, lang)}</span>
+                                  </div>
+                                </div>
+                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${order.credentialsUnlocked ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}`}>
+                                  {order.status}
+                                </span>
+                              </div>
+
+                              {!order.credentialsUnlocked && (
+                                <div className="bg-gradient-to-r from-amber-950/50 via-slate-900 to-emerald-950/40 px-6 py-4 border-b border-amber-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                  <p className="text-xs text-slate-300">
+                                    {tr('اضغط على واتساب أو ماسنجر لإرسال رقم الطلب ورابط صورة التحويل للإدارة واستلام الـ QR Code فوراً.', 'Confirm via WhatsApp or Messenger to receive your QR Code.')}
+                                  </p>
+                                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                                    <button
+                                      onClick={() => handleConfirmViaWhatsApp(order)}
+                                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all"
+                                    >
+                                      <PhoneCall className="w-3.5 h-3.5" />
+                                      <span>{tr('تأكيد عبر واتساب', 'Confirm via WhatsApp')}</span>
+                                    </button>
+                                    <button
+                                      onClick={() => handleConfirmViaMessenger(order)}
+                                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all"
+                                    >
+                                      <MessageCircle className="w-3.5 h-3.5" />
+                                      <span>{tr('تأكيد عبر ماسنجر', 'Confirm via Messenger')}</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+
+                              <div className="p-6 space-y-4">
+                                {order.credentialsUnlocked ? (
+                                  parsedAccounts.length === 0 ? (
+                                    <p className="text-xs text-slate-400">{tr('لا توجد بيانات حسابات لهذا الطلب.', 'No account data for this order.')}</p>
+                                  ) : (
+                                    parsedAccounts.map((acc, idx) => (
+                                      <div key={idx} className="rounded-2xl bg-slate-950/80 border border-white/10 p-4 space-y-3">
+                                        <div className="flex items-center justify-between gap-3">
+                                          <div className="flex items-center gap-3 min-w-0">
+                                            {acc.image && (
+                                              <img src={acc.image} alt={acc.title} className="w-12 h-12 rounded-xl object-cover shrink-0" />
+                                            )}
+                                            <div className="min-w-0">
+                                              <h4 className="font-bold text-sm text-white truncate">{acc.title}</h4>
+                                              <span className="text-[11px] text-slate-400">{acc.console} • {acc.licenseType === 'Primary' ? tr('أساسي', 'Primary') : tr('ثانوي', 'Secondary')}</span>
+                                            </div>
+                                          </div>
+                                          <span className="text-xs font-bold text-emerald-400 shrink-0">{formatEGP(acc.pricePaid, lang)}</span>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs" dir="ltr">
+                                          {[
+                                            { label: 'PSN Email', value: acc.psnEmail },
+                                            { label: 'Password', value: acc.psnPassword },
+                                            { label: '2-Step Code', value: acc.twoStepCode }
+                                          ].map((f) => (
+                                            <div key={f.label} className="rounded-xl bg-slate-900 border border-white/10 p-2.5 flex items-center justify-between gap-2">
+                                              <div className="min-w-0">
+                                                <span className="block text-[10px] text-slate-500">{f.label}</span>
+                                                <span className="font-mono text-slate-100 break-all">{f.value || '—'}</span>
+                                              </div>
+                                              <button
+                                                type="button"
+                                                onClick={() => copyTextToClipboard(f.value || '', `${order.id}_${idx}_${f.label}`)}
+                                                className="p-1.5 rounded-lg bg-slate-800 hover:bg-blue-600 text-slate-300 hover:text-white transition-colors shrink-0"
+                                              >
+                                                {copiedId === `${order.id}_${idx}_${f.label}` ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                                              </button>
+                                            </div>
+                                          ))}
+                                        </div>
+
+                                        {acc.activationInstructions && (
+                                          <p className="text-[11px] text-slate-400 leading-relaxed whitespace-pre-line">{acc.activationInstructions}</p>
+                                        )}
+                                      </div>
+                                    ))
+                                  )
+                                ) : (
+                                  <div className="rounded-2xl bg-slate-950/60 border border-dashed border-white/15 p-6 text-center space-y-2">
+                                    <Lock className="w-8 h-8 text-slate-500 mx-auto" />
+                                    <p className="text-sm font-bold text-slate-300">{tr('بيانات الحساب مقفلة حتى تأكيد الإدارة', 'Account details are locked until admin confirmation')}</p>
+                                  </div>
+                                )}
+
+                                {(order.receiptImage || order.receiptHostedUrl) && (
+                                  <button
+                                    onClick={() => setReceiptPreviewModal(order.receiptImage || order.receiptHostedUrl)}
+                                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-400 hover:text-blue-300"
+                                  >
+                                    <ImageIcon className="w-4 h-4" />
+                                    <span>{tr('عرض إيصال التحويل', 'View transfer receipt')}</span>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'admin' && !isCustomerViewOnly && (
+                  <div className="space-y-6 max-w-6xl mx-auto">
+                    <div className="flex flex-wrap items-center gap-2 bg-slate-900 p-1.5 rounded-2xl border border-white/10">
+                      {[
+                        { id: 'inventory', ar: 'المخزون', en: 'Inventory' },
+                        { id: 'add', ar: editingGameId ? 'تعديل لعبة' : 'إضافة لعبة', en: editingGameId ? 'Edit Game' : 'Add Game' },
+                        { id: 'vault', ar: 'خزنة الحسابات', en: 'Account Vault' },
+                        { id: 'orders', ar: 'الطلبات', en: 'Orders' },
+                        { id: 'promos', ar: 'أكواد الخصم', en: 'Promo Codes' },
+                        { id: 'settings', ar: 'الإعدادات', en: 'Settings' }
+                      ].map((t) => (
+                        <button
+                          key={t.id}
+                          onClick={() => setAdminSubTab(t.id)}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                            adminSubTab === t.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-300 hover:text-white hover:bg-white/5'
+                          }`}
+                        >
+                          {tr(t.ar, t.en)}
+                        </button>
+                      ))}
+                    </div>
+
+                    {adminSubTab === 'inventory' && (
+                      <div className="rounded-3xl bg-slate-900/80 border border-white/10 overflow-hidden">
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-xs">
+                            <thead className="bg-slate-950 text-slate-400">
+                              <tr>
+                                <th className="p-3 text-start">{tr('اللعبة', 'Game')}</th>
+                                <th className="p-3 text-start">{tr('الجهاز', 'Console')}</th>
+                                <th className="p-3 text-start">{tr('أساسي', 'Primary')}</th>
+                                <th className="p-3 text-start">{tr('ثانوي', 'Secondary')}</th>
+                                <th className="p-3 text-start">{tr('إجراءات', 'Actions')}</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {games.map((g) => (
+                                <tr key={g.id} className="border-t border-white/5">
+                                  <td className="p-3 font-bold text-white">{g.title}</td>
+                                  <td className="p-3 text-slate-300">{g.console}</td>
+                                  <td className="p-3 text-blue-300">{formatEGP(g.primaryPrice, lang)} <span className="text-slate-500">({g.primaryStock})</span></td>
+                                  <td className="p-3 text-purple-300">{formatEGP(g.secondaryPrice, lang)} <span className="text-slate-500">({g.secondaryStock})</span></td>
+                                  <td className="p-3">
+                                    <div className="flex items-center gap-2">
+                                      <button onClick={() => startEditGame(g)} className="px-3 py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600 text-blue-300 hover:text-white font-bold transition-colors">
+                                        {tr('تعديل', 'Edit')}
+                                      </button>
+                                      <button onClick={() => setGameToDeleteModal(g)} className="p-1.5 rounded-lg bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white transition-colors">
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                    {adminSubTab === 'add' && (
+                      <form onSubmit={handleSaveGame} className="rounded-3xl bg-slate-900/80 border border-white/10 p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <h3 className="md:col-span-2 text-lg font-black text-white">
+                          {editingGameId ? tr('تعديل اللعبة', 'Edit Game') : tr('إضافة لعبة جديدة', 'Add New Game')}
+                        </h3>
+                        {[
+                          { key: 'title', label: tr('اسم اللعبة', 'Title'), type: 'text', required: true },
+                          { key: 'genre', label: tr('التصنيف', 'Genre'), type: 'text' },
+                          { key: 'badge', label: tr('الشارة', 'Badge'), type: 'text' },
+                          { key: 'rating', label: tr('التقييم', 'Rating'), type: 'number', step: '0.05' },
+                          { key: 'releaseYear', label: tr('سنة الإصدار', 'Release Year'), type: 'number' },
+                          { key: 'primaryPrice', label: tr('سعر الأساسي', 'Primary Price'), type: 'number' },
+                          { key: 'secondaryPrice', label: tr('سعر الثانوي', 'Secondary Price'), type: 'number' },
+                          { key: 'retailPrice', label: tr('السعر الأصلي', 'Retail Price'), type: 'number' },
+                          { key: 'primaryStock', label: tr('مخزون الأساسي', 'Primary Stock'), type: 'number' },
+                          { key: 'secondaryStock', label: tr('مخزون الثانوي', 'Secondary Stock'), type: 'number' }
+                        ].map((f) => (
+                          <label key={f.key} className="space-y-1 block">
+                            <span className="text-[11px] font-semibold text-slate-400">{f.label}</span>
+                            <input
+                              type={f.type}
+                              step={f.step}
+                              required={f.required}
+                              value={gameForm[f.key]}
+                              onChange={(e) => setGameForm((p) => ({ ...p, [f.key]: e.target.value }))}
+                              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-sm text-white focus:outline-none focus:border-blue-500"
+                            />
+                          </label>
+                        ))}
+                        <label className="space-y-1 block">
+                          <span className="text-[11px] font-semibold text-slate-400">{tr('الجهاز', 'Console')}</span>
+                          <select
+                            value={gameForm.console}
+                            onChange={(e) => setGameForm((p) => ({ ...p, console: e.target.value }))}
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-sm text-white focus:outline-none focus:border-blue-500"
+                          >
+                            <option value="PS5">PS5</option>
+                            <option value="PS4">PS4</option>
+                            <option value="PS4 & PS5">PS4 &amp; PS5</option>
+                          </select>
+                        </label>
+                        <label className="flex items-center gap-2 self-end pb-2.5">
+                          <input
+                            type="checkbox"
+                            checked={gameForm.featured}
+                            onChange={(e) => setGameForm((p) => ({ ...p, featured: e.target.checked }))}
+                          />
+                          <span className="text-xs font-semibold text-slate-300">{tr('لعبة مميزة', 'Featured')}</span>
+                        </label>
+                        <label className="space-y-1 block md:col-span-2">
+                          <span className="text-[11px] font-semibold text-slate-400">{tr('رابط الصورة', 'Image URL')}</span>
+                          <input
+                            type="text"
+                            value={gameForm.image}
+                            onChange={(e) => setGameForm((p) => ({ ...p, image: e.target.value }))}
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-sm text-white focus:outline-none focus:border-blue-500"
+                            dir="ltr"
+                          />
+                        </label>
+                        <label className="space-y-1 block md:col-span-2">
+                          <span className="text-[11px] font-semibold text-slate-400">{tr('الوصف', 'Description')}</span>
+                          <textarea
+                            rows={3}
+                            value={gameForm.description}
+                            onChange={(e) => setGameForm((p) => ({ ...p, description: e.target.value }))}
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-sm text-white focus:outline-none focus:border-blue-500"
+                          />
+                        </label>
+                        <div className="md:col-span-2 flex items-center gap-3">
+                          <button type="submit" className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold transition-all">
+                            {tr('حفظ اللعبة', 'Save Game')}
+                          </button>
+                          {editingGameId && (
+                            <button
+                              type="button"
+                              onClick={() => { resetGameForm(); setAdminSubTab('inventory'); }}
+                              className="px-6 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-bold transition-all"
+                            >
+                              {tr('إلغاء', 'Cancel')}
+                            </button>
+                          )}
+                        </div>
+                      </form>
+                    )}
+
+                    {adminSubTab === 'vault' && (
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <form onSubmit={handleAddAccountToVault} className="rounded-3xl bg-slate-900/80 border border-white/10 p-6 space-y-4">
+                          <h3 className="text-lg font-black text-white">{tr('إضافة حساب للخزنة', 'Add Account to Vault')}</h3>
+                          <select
+                            required
+                            value={vaultForm.gameId}
+                            onChange={(e) => setVaultForm((p) => ({ ...p, gameId: e.target.value }))}
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-sm text-white focus:outline-none focus:border-blue-500"
+                          >
+                            <option value="">{tr('اختر اللعبة...', 'Select a game...')}</option>
+                            {games.map((g) => (
+                              <option key={g.id} value={g.id}>{g.title}</option>
+                            ))}
+                          </select>
+                          <select
+                            value={vaultForm.licenseType}
+                            onChange={(e) => setVaultForm((p) => ({ ...p, licenseType: e.target.value }))}
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-sm text-white focus:outline-none focus:border-blue-500"
+                          >
+                            <option value="Primary">{tr('أساسي', 'Primary')}</option>
+                            <option value="Secondary">{tr('ثانوي', 'Secondary')}</option>
+                          </select>
+                          {[
+                            { key: 'psnEmail', label: 'PSN Email' },
+                            { key: 'psnPassword', label: 'PSN Password' },
+                            { key: 'twoStepCode', label: '2-Step Code' }
+                          ].map((f) => (
+                            <input
+                              key={f.key}
+                              type="text"
+                              dir="ltr"
+                              required={f.key !== 'twoStepCode'}
+                              placeholder={f.label}
+                              value={vaultForm[f.key]}
+                              onChange={(e) => setVaultForm((p) => ({ ...p, [f.key]: e.target.value }))}
+                              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-sm text-white focus:outline-none focus:border-blue-500"
+                            />
+                          ))}
+                          <textarea
+                            rows={2}
+                            placeholder={tr('ملاحظات / تعليمات التفعيل', 'Notes / activation instructions')}
+                            value={vaultForm.notes}
+                            onChange={(e) => setVaultForm((p) => ({ ...p, notes: e.target.value }))}
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-sm text-white focus:outline-none focus:border-blue-500"
+                          />
+                          <button type="submit" className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold transition-all">
+                            {tr('حفظ في الخزنة', 'Save to Vault')}
+                          </button>
+                        </form>
+
+                        <div className="rounded-3xl bg-slate-900/80 border border-white/10 p-6 space-y-3 max-h-[560px] overflow-y-auto">
+                          <h3 className="text-lg font-black text-white">{tr('الحسابات المخزنة', 'Stored Accounts')} ({accountPool.length})</h3>
+                          {accountPool.length === 0 && (
+                            <p className="text-xs text-slate-400">{tr('لا توجد حسابات مخزنة.', 'No stored accounts.')}</p>
+                          )}
+                          {accountPool.map((acc) => (
+                            <div key={acc.id} className="rounded-2xl bg-slate-950 border border-white/10 p-3 flex items-center justify-between gap-3">
+                              <div className="min-w-0 text-xs" dir="ltr">
+                                <div className="font-bold text-white truncate">{acc.gameTitle} • {acc.licenseType}</div>
+                                <div className="text-slate-400 truncate">{acc.psnEmail}</div>
+                                <div className={acc.status === 'available' ? 'text-emerald-400' : 'text-amber-400'}>{acc.status}</div>
+                              </div>
+                              <button
+                                onClick={() => handleDeleteVaultAccount(acc)}
+                                className="p-2 rounded-lg bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white transition-colors shrink-0"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {adminSubTab === 'orders' && (
+                      <div className="space-y-4">
+                        {orders.length === 0 ? (
+                          <div className="rounded-3xl bg-slate-900/60 border border-white/10 p-10 text-center text-sm text-slate-400">
+                            {tr('لا توجد طلبات بعد.', 'No orders yet.')}
+                          </div>
+                        ) : (
+                          orders.map((order) => (
+                            <div key={order.id} className="rounded-3xl bg-slate-900/90 border border-white/10 p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                              <div className="space-y-1 text-xs">
+                                <div className="font-mono font-bold text-sm text-cyan-400">{order.orderNumber}</div>
+                                <div className="text-white font-bold">{order.customerName} {order.whatsappNumber ? `• ${order.whatsappNumber}` : ''}</div>
+                                <div className="text-slate-400">{getPaymentMethodLabel(order.paymentMethod)} • {formatEGP(order.totalAmount, lang)}</div>
+                                <div className={order.credentialsUnlocked ? 'text-emerald-400' : 'text-amber-400'}>{order.status}</div>
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                {(order.receiptImage || order.receiptHostedUrl) && (
+                                  <button
+                                    onClick={() => setReceiptPreviewModal(order.receiptImage || order.receiptHostedUrl)}
+                                    className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all"
+                                  >
+                                    {tr('الإيصال', 'Receipt')}
+                                  </button>
+                                )}
+                                {!order.credentialsUnlocked && (
+                                  <button
+                                    onClick={() => handleAdminApproveAndUnlockOrder(order)}
+                                    className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all"
+                                  >
+                                    {tr('تأكيد وفتح', 'Approve & Unlock')}
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => openManageOrderCredentials(order)}
+                                  className="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all"
+                                >
+                                  {tr('إدارة البيانات', 'Manage Credentials')}
+                                </button>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+
+                    {adminSubTab === 'promos' && (
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <form onSubmit={handleAddPromoCode} className="rounded-3xl bg-slate-900/80 border border-white/10 p-6 space-y-4">
+                          <h3 className="text-lg font-black text-white">{tr('إضافة كود خصم', 'Add Promo Code')}</h3>
+                          <input
+                            type="text"
+                            dir="ltr"
+                            placeholder="CODE"
+                            value={newPromoForm.code}
+                            onChange={(e) => setNewPromoForm((p) => ({ ...p, code: e.target.value }))}
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-sm text-white uppercase focus:outline-none focus:border-blue-500"
+                          />
+                          <div className="grid grid-cols-2 gap-3">
+                            <select
+                              value={newPromoForm.discountType}
+                              onChange={(e) => setNewPromoForm((p) => ({ ...p, discountType: e.target.value }))}
+                              className="px-3.5 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-sm text-white focus:outline-none focus:border-blue-500"
+                            >
+                              <option value="percent">{tr('نسبة %', 'Percent %')}</option>
+                              <option value="fixed">{tr('مبلغ ثابت', 'Fixed amount')}</option>
+                            </select>
+                            <input
+                              type="number"
+                              min="1"
+                              value={newPromoForm.discountValue}
+                              onChange={(e) => setNewPromoForm((p) => ({ ...p, discountValue: e.target.value }))}
+                              className="px-3.5 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-sm text-white focus:outline-none focus:border-blue-500"
+                            />
+                          </div>
+                          <button type="submit" className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold transition-all">
+                            {tr('إضافة', 'Add')}
+                          </button>
+                        </form>
+
+                        <div className="rounded-3xl bg-slate-900/80 border border-white/10 p-6 space-y-3">
+                          <h3 className="text-lg font-black text-white">{tr('الأكواد الحالية', 'Active Codes')}</h3>
+                          {promoCodes.map((p) => (
+                            <div key={p.id} className="rounded-2xl bg-slate-950 border border-white/10 p-3 flex items-center justify-between gap-3">
+                              <div className="text-xs">
+                                <span className="font-mono font-bold text-cyan-400">{p.code}</span>
+                                <span className="text-slate-400"> • {p.discountType === 'percent' ? `${p.discountValue}%` : formatEGP(p.discountValue, lang)}</span>
+                              </div>
+                              <button
+                                onClick={() => handleDeletePromoCode(p)}
+                                className="p-2 rounded-lg bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {adminSubTab === 'settings' && (
+                      <form onSubmit={handleSaveStoreSettings} className="rounded-3xl bg-slate-900/80 border border-white/10 p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <h3 className="md:col-span-2 text-lg font-black text-white">{tr('إعدادات المتجر', 'Store Settings')}</h3>
+                        {[
+                          { key: 'whatsappNumber', label: tr('رقم واتساب', 'WhatsApp Number') },
+                          { key: 'storePageUrl', label: tr('رابط ماسنجر / صفحة فيسبوك', 'Messenger / Facebook Page URL') },
+                          { key: 'vfcNumber', label: tr('رقم فودافون كاش', 'Vodafone Cash Number') },
+                          { key: 'vfcRecipient', label: tr('اسم مستلم فودافون كاش', 'Vodafone Cash Recipient') },
+                          { key: 'instapayAccount', label: tr('حساب إنستاباي', 'InstaPay Account') },
+                          { key: 'instapayRecipient', label: tr('اسم مستلم إنستاباي', 'InstaPay Recipient') },
+                          { key: 'teldaAccount', label: tr('حساب تيلدا', 'Telda Account') },
+                          { key: 'teldaRecipient', label: tr('اسم مستلم تيلدا', 'Telda Recipient') },
+                          { key: 'adminPin', label: tr('الكود السري للإدارة', 'Secret Admin Code') }
+                        ].map((f) => (
+                          <label key={f.key} className="space-y-1 block">
+                            <span className="text-[11px] font-semibold text-slate-400">{f.label}</span>
+                            <input
+                              type="text"
+                              dir="ltr"
+                              value={storeConfig[f.key] || ''}
+                              onChange={(e) => setStoreConfig((p) => ({ ...p, [f.key]: e.target.value }))}
+                              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-sm text-white focus:outline-none focus:border-blue-500"
+                            />
+                          </label>
+                        ))}
+                        <div className="md:col-span-2">
+                          <button type="submit" className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold transition-all">
+                            {tr('حفظ الإعدادات', 'Save Settings')}
+                          </button>
+                        </div>
+                      </form>
+                    )}
+                  </div>
+                )}
+              </main>
+
+              {/* Footer */}
+              <footer className="relative z-10 border-t border-white/10 mt-12 py-8 text-center text-xs text-slate-500">
+                <p>© {new Date().getFullYear()} Bonka Store — {tr('جميع الحقوق محفوظة', 'All rights reserved')}</p>
+              </footer>
+
+              {/* Cart Drawer */}
+              {cartOpen && (
+                <div className="fixed inset-0 z-[60] flex">
+                  <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setCartOpen(false)} />
+                  <aside className={`relative z-10 w-full max-w-md bg-slate-950 border-white/10 flex flex-col h-full ${isAr ? 'mr-auto border-r' : 'ml-auto border-l'}`}>
+                    <div className="flex items-center justify-between p-5 border-b border-white/10">
+                      <h3 className="text-lg font-black text-white flex items-center gap-2">
+                        <ShoppingCart className="w-5 h-5 text-blue-400" />
+                        <span>{tr('سلة المشتريات', 'Shopping Cart')}</span>
+                      </h3>
+                      <button onClick={() => setCartOpen(false)} className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto p-5 space-y-3">
+                      {cart.length === 0 ? (
+                        <div className="py-16 text-center space-y-3">
+                          <ShoppingCart className="w-12 h-12 text-slate-600 mx-auto" />
+                          <p className="text-sm text-slate-400">{tr('السلة فارغة', 'Your cart is empty')}</p>
+                        </div>
+                      ) : (
+                        cart.map((item) => {
+                          const liveGame = games.find((g) => g.id === item.gameId);
+                          const price = liveGame
+                            ? (item.licenseType === 'Primary' ? normalizeEgpPrice(liveGame.primaryPrice, 1100) : normalizeEgpPrice(liveGame.secondaryPrice, 650))
+                            : normalizeEgpPrice(item.price, 750);
+                          return (
+                            <div key={item.id} className="rounded-2xl bg-slate-900 border border-white/10 p-3 flex items-center gap-3">
+                              <img
+                                src={liveGame?.image || item.image}
+                                alt={item.title}
+                                onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/120x120/0f172a/38bdf8?text=PS'; }}
+                                className="w-16 h-16 rounded-xl object-cover shrink-0"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <h4 className="text-sm font-bold text-white truncate">{liveGame?.title || item.title}</h4>
+                                <span className="text-[11px] text-slate-400">{item.licenseType === 'Primary' ? tr('أساسي', 'Primary') : tr('ثانوي', 'Secondary')}</span>
+                                <div className="flex items-center justify-between mt-1.5">
+                                  <div className="flex items-center gap-2">
+                                    <button onClick={() => updateCartQuantity(item, -1)} className="w-6 h-6 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold">−</button>
+                                    <span className="text-xs font-bold text-white w-4 text-center">{item.quantity}</span>
+                                    <button onClick={() => updateCartQuantity(item, 1)} className="w-6 h-6 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold">+</button>
+                                  </div>
+                                  <span className="text-sm font-black text-white">{formatEGP(price * (Number(item.quantity) || 1), lang)}</span>
+                                </div>
+                              </div>
+                              <button onClick={() => removeFromCart(item.id)} className="p-2 rounded-lg text-rose-400 hover:bg-rose-600/20 transition-colors shrink-0">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+
+                    {cart.length > 0 && (
+                      <div className="p-5 border-t border-white/10 space-y-4">
+                        <div className="flex items-center gap-2">
+                          <div className="relative flex-1">
+                            <Tag className={`w-4 h-4 text-slate-500 absolute ${isAr ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2`} />
+                            <input
+                              type="text"
+                              value={promoInput}
+                              onChange={(e) => setPromoInput(e.target.value)}
+                              placeholder={tr('كود الخصم', 'Promo code')}
+                              className={`w-full ${isAr ? 'pr-9 pl-3' : 'pl-9 pr-3'} py-2.5 rounded-xl bg-slate-900 border border-white/10 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500`}
+                            />
+                          </div>
+                          <button onClick={handleApplyPromoCode} className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-all">
+                            {tr('تطبيق', 'Apply')}
+                          </button>
+                        </div>
+
+                        <div className="space-y-1.5 text-sm">
+                          <div className="flex justify-between text-slate-300">
+                            <span>{tr('المجموع', 'Subtotal')}</span>
+                            <span>{formatEGP(cartTotals.subtotal, lang)}</span>
+                          </div>
+                          {cartTotals.promoDiscount > 0 && (
+                            <div className="flex justify-between text-emerald-400">
+                              <span>{tr('خصم', 'Discount')} {appliedPromo ? `(${appliedPromo.code})` : ''}</span>
+                              <span>-{formatEGP(cartTotals.promoDiscount, lang)}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between text-lg font-black text-white pt-1.5 border-t border-white/10">
+                            <span>{tr('الإجمالي', 'Total')}</span>
+                            <span>{formatEGP(cartTotals.finalTotal, lang)}</span>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => { setCartOpen(false); setCheckoutModalOpen(true); }}
+                          className="w-full py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-600/25 transition-all"
+                        >
+                          <CreditCard className="w-4 h-4" />
+                          <span>{tr('إتمام الطلب', 'Checkout')}</span>
+                        </button>
+                      </div>
+                    )}
+                  </aside>
+                </div>
+              )}
+
+              {/* Checkout Modal */}
+              {checkoutModalOpen && (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+                  <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={() => setCheckoutModalOpen(false)} />
+                  <form
+                    onSubmit={handleCompleteCheckout}
+                    className="relative z-10 w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl bg-slate-950 border border-white/10 p-6 space-y-4"
+                  >
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-black text-white flex items-center gap-2">
+                        <Wallet className="w-5 h-5 text-blue-400" />
+                        <span>{tr('إتمام الطلب', 'Complete Order')}</span>
+                      </h3>
+                      <button type="button" onClick={() => setCheckoutModalOpen(false)} className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <input
+                      type="text"
+                      required
+                      value={checkoutForm.customerName}
+                      onChange={(e) => setCheckoutForm((p) => ({ ...p, customerName: e.target.value }))}
+                      placeholder={tr('الاسم الكامل', 'Full name')}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-white/10 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                    />
+                    <input
+                      type="tel"
+                      dir="ltr"
+                      value={checkoutForm.whatsappNumber}
+                      onChange={(e) => setCheckoutForm((p) => ({ ...p, whatsappNumber: e.target.value }))}
+                      placeholder={tr('رقم واتساب (اختياري)', 'WhatsApp number (optional)')}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-white/10 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                    />
+
+                    {/* Payment method */}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setPaymentDropdownOpen((o) => !o)}
+                        className={`w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl bg-slate-900 border ${selectedPaymentObj.borderColor} text-sm text-white`}
+                      >
+                        <span className="flex items-center gap-2">
+                          <span className={`w-2.5 h-2.5 rounded-full ${selectedPaymentObj.dotColor}`} />
+                          <span>{tr(selectedPaymentObj.titleAr, selectedPaymentObj.titleEn)}</span>
+                        </span>
+                        <ChevronDown className="w-4 h-4 text-slate-400" />
+                      </button>
+                      {paymentDropdownOpen && (
+                        <div className="absolute z-20 mt-1 w-full rounded-xl bg-slate-900 border border-white/10 overflow-hidden shadow-xl">
+                          {paymentMethodsList.map((m) => (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => {
+                                setCheckoutForm((p) => ({ ...p, paymentMethod: m.id }));
+                                setPaymentDropdownOpen(false);
+                              }}
+                              className="w-full flex items-center gap-2 px-3.5 py-2.5 text-sm text-white hover:bg-white/5 text-start"
+                            >
+                              <span className={`w-2.5 h-2.5 rounded-full ${m.dotColor}`} />
+                              <span>{tr(m.titleAr, m.titleEn)}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="rounded-2xl bg-slate-900 border border-white/10 p-4 space-y-2 text-xs">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-slate-400">{tr('حوّل إلى', 'Transfer to')}</span>
+                        <span className="font-bold text-white">{selectedPaymentObj.recipientName}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2" dir="ltr">
+                        <span className={`font-mono break-all ${selectedPaymentObj.textColor}`}>{selectedPaymentObj.transferValue}</span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => copyTextToClipboard(selectedPaymentObj.transferValue, 'pay_value')}
+                            className="p-1.5 rounded-lg bg-slate-800 hover:bg-blue-600 text-slate-300 hover:text-white transition-colors"
+                          >
+                            {copiedId === 'pay_value' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                          </button>
+                          {selectedPaymentObj.isUrl && (
+                            <a
+                              href={selectedPaymentObj.transferValue}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1.5 rounded-lg bg-slate-800 hover:bg-blue-600 text-slate-300 hover:text-white transition-colors"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between pt-2 border-t border-white/10 text-sm">
+                        <span className="text-slate-300">{tr('المبلغ المطلوب', 'Amount due')}</span>
+                        <span className="font-black text-emerald-400">{formatEGP(cartTotals.finalTotal, lang)}</span>
+                      </div>
+                    </div>
+
+                    {/* Receipt upload */}
+                    <div className="space-y-2">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleReceiptFileChange}
+                        className="hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed border-white/20 hover:border-blue-500 text-sm text-slate-300 hover:text-white transition-all"
+                      >
+                        {uploadingReceipt ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                        <span>
+                          {checkoutForm.receiptFileName
+                            ? checkoutForm.receiptFileName
+                            : tr('ارفع صورة إيصال التحويل', 'Upload transfer receipt')}
+                        </span>
+                      </button>
+                      {checkoutForm.receiptImage && (
+                        <img src={checkoutForm.receiptImage} alt="receipt" className="max-h-40 rounded-xl border border-white/10 mx-auto" />
+                      )}
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={submittingOrder || cart.length === 0}
+                      className={`w-full py-3 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+                        submittingOrder || cart.length === 0
+                          ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                          : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg shadow-blue-600/25'
+                      }`}
+                    >
+                      {submittingOrder ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                      <span>{submittingOrder ? tr('جاري التسجيل...', 'Submitting...') : tr('تأكيد الطلب', 'Place Order')}</span>
+                    </button>
+                  </form>
+                </div>
+              )}
+
+              {/* Post-Order Modal */}
+              {postOrderModal && (
+                <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+                  <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={() => setPostOrderModal(null)} />
+                  <div className="relative z-10 w-full max-w-md rounded-3xl bg-slate-950 border border-emerald-500/30 p-6 text-center space-y-4">
+                    <CheckCircle2 className="w-14 h-14 text-emerald-400 mx-auto" />
+                    <h3 className="text-xl font-black text-white">{tr('تم تسجيل طلبك!', 'Order Created!')}</h3>
+                    <p className="text-sm text-slate-300">
+                      {tr('رقم طلبك:', 'Your order number:')} <span className="font-mono font-bold text-cyan-400">{postOrderModal.orderNumber}</span>
+                    </p>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      {tr('أرسل رقم الطلب وصورة التحويل للإدارة عبر واتساب أو ماسنجر لاستلام حسابك فوراً.', 'Send your order number and receipt via WhatsApp or Messenger to receive your account.')}
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <button
+                        onClick={() => handleConfirmViaWhatsApp(postOrderModal)}
+                        className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all"
+                      >
+                        <PhoneCall className="w-4 h-4" />
+                        <span>{tr('واتساب', 'WhatsApp')}</span>
+                      </button>
+                      <button
+                        onClick={() => handleConfirmViaMessenger(postOrderModal)}
+                        className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                        <span>{tr('ماسنجر', 'Messenger')}</span>
+                      </button>
+                    </div>
+                    <button onClick={() => setPostOrderModal(null)} className="text-xs text-slate-400 hover:text-white">
+                      {tr('إغلاق', 'Close')}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Game Details Modal */}
+              {selectedGameModal && (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+                  <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={() => setSelectedGameModal(null)} />
+                  <div className="relative z-10 w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl bg-slate-950 border border-white/10 overflow-hidden">
+                    <div className="relative h-56 bg-slate-900">
+                      <img
+                        src={selectedGameModal.image}
+                        alt={selectedGameModal.title}
+                        onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/600x400/0f172a/38bdf8?text=PlayStation+Game'; }}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950 to-transparent" />
+                      <button
+                        onClick={() => setSelectedGameModal(null)}
+                        className="absolute top-3 right-3 p-2 rounded-xl bg-slate-950/80 text-slate-200 hover:bg-rose-600 transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="p-6 space-y-3">
+                      <h3 className="text-xl font-black text-white">{selectedGameModal.title}</h3>
+                      <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold">
+                        <span className="px-2.5 py-1 rounded-lg bg-white/10 text-white">{selectedGameModal.console}</span>
+                        <span className="px-2.5 py-1 rounded-lg bg-blue-500/15 text-blue-300">{selectedGameModal.genre}</span>
+                        <span className="px-2.5 py-1 rounded-lg bg-amber-500/15 text-amber-300">★ {selectedGameModal.rating}</span>
+                        <span className="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300">{selectedGameModal.releaseYear}</span>
+                      </div>
+                      <p className="text-sm text-slate-300 leading-relaxed">{selectedGameModal.description}</p>
+                      <div className="grid grid-cols-2 gap-3 pt-2">
+                        <button
+                          disabled={Number(selectedGameModal.primaryStock) <= 0}
+                          onClick={() => { addToCart(selectedGameModal, 'Primary'); setSelectedGameModal(null); }}
+                          className={`p-3 rounded-2xl text-xs font-bold transition-all ${
+                            Number(selectedGameModal.primaryStock) <= 0 ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-blue-600/20 border border-blue-500 text-blue-200 hover:bg-blue-600 hover:text-white'
+                          }`}
+                        >
+                          <div>{tr('أساسي', 'Primary')}</div>
+                          <div className="text-sm font-black">{formatEGP(selectedGameModal.primaryPrice, lang)}</div>
+                        </button>
+                        <button
+                          disabled={Number(selectedGameModal.secondaryStock) <= 0}
+                          onClick={() => { addToCart(selectedGameModal, 'Secondary'); setSelectedGameModal(null); }}
+                          className={`p-3 rounded-2xl text-xs font-bold transition-all ${
+                            Number(selectedGameModal.secondaryStock) <= 0 ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-purple-600/20 border border-purple-500 text-purple-200 hover:bg-purple-600 hover:text-white'
+                          }`}
+                        >
+                          <div>{tr('ثانوي', 'Secondary')}</div>
+                          <div className="text-sm font-black">{formatEGP(selectedGameModal.secondaryPrice, lang)}</div>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Delete Game Modal */}
+              {gameToDeleteModal && (
+                <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+                  <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={() => setGameToDeleteModal(null)} />
+                  <div className="relative z-10 w-full max-w-sm rounded-3xl bg-slate-950 border border-rose-500/30 p-6 text-center space-y-4">
+                    <AlertCircle className="w-12 h-12 text-rose-400 mx-auto" />
+                    <h3 className="text-lg font-black text-white">{tr('حذف اللعبة؟', 'Delete this game?')}</h3>
+                    <p className="text-sm text-slate-300">{gameToDeleteModal.title}</p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleDeleteGame(gameToDeleteModal.id, gameToDeleteModal.title)}
+                        className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-sm font-bold transition-all"
+                      >
+                        {tr('حذف', 'Delete')}
+                      </button>
+                      <button
+                        onClick={() => setGameToDeleteModal(null)}
+                        className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-bold transition-all"
+                      >
+                        {tr('إلغاء', 'Cancel')}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Receipt Preview Modal */}
+              {receiptPreviewModal && (
+                <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
+                  <div className="absolute inset-0 bg-black/85 backdrop-blur-sm" onClick={() => setReceiptPreviewModal(null)} />
+                  <div className="relative z-10 max-w-2xl w-full">
+                    <button
+                      onClick={() => setReceiptPreviewModal(null)}
+                      className="absolute -top-3 -right-3 p-2 rounded-full bg-slate-900 border border-white/20 text-white hover:bg-rose-600 transition-colors z-10"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                    <img src={receiptPreviewModal} alt="receipt" className="w-full max-h-[85vh] object-contain rounded-2xl border border-white/10 bg-slate-950" />
+                  </div>
+                </div>
+              )}
+
+              {/* Admin PIN Modal */}
+              {adminPinModalOpen && (
+                <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
+                  <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => { setAdminPinModalOpen(false); setAdminPinInput(''); }} />
+                  <form
+                    onSubmit={handleAdminUnlockSubmit}
+                    className="relative z-10 w-full max-w-sm rounded-3xl bg-slate-950 border border-indigo-500/30 p-6 space-y-4 text-center"
+                  >
+                    <Lock className="w-10 h-10 text-indigo-400 mx-auto" />
+                    <h3 className="text-lg font-black text-white">{tr('الدخول للإدارة', 'Admin Access')}</h3>
+                    <input
+                      type="password"
+                      autoFocus
+                      dir="ltr"
+                      value={adminPinInput}
+                      onChange={(e) => setAdminPinInput(e.target.value)}
+                      placeholder={tr('الكود السري', 'Secret code')}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-white/10 text-sm text-white text-center focus:outline-none focus:border-indigo-500"
+                    />
+                    <button type="submit" className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold transition-all">
+                      {tr('دخول', 'Unlock')}
+                    </button>
+                  </form>
+                </div>
+              )}
+
+              {/* Manage Order Credentials Modal */}
+              {managingOrderModal && (
+                <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+                  <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={() => setManagingOrderModal(null)} />
+                  <form
+                    onSubmit={handleSaveDispatchedCredentials}
+                    className="relative z-10 w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-3xl bg-slate-950 border border-white/10 p-6 space-y-4"
+                  >
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-black text-white">
+                        {tr('بيانات الطلب', 'Order Credentials')} <span className="font-mono text-cyan-400">{managingOrderModal.orderNumber}</span>
+                      </h3>
+                      <button type="button" onClick={() => setManagingOrderModal(null)} className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {editableOrderAccounts.map((acc, idx) => (
+                      <div key={idx} className="rounded-2xl bg-slate-900 border border-white/10 p-4 space-y-2">
+                        <div className="text-sm font-bold text-white">
+                          {acc.title} • {acc.licenseType === 'Primary' ? tr('أساسي', 'Primary') : tr('ثانوي', 'Secondary')}
+                        </div>
+                        {[
+                          { key: 'psnEmail', label: 'PSN Email' },
+                          { key: 'psnPassword', label: 'PSN Password' },
+                          { key: 'twoStepCode', label: '2-Step Code' }
+                        ].map((f) => (
+                          <input
+                            key={f.key}
+                            type="text"
+                            dir="ltr"
+                            placeholder={f.label}
+                            value={acc[f.key] || ''}
+                            onChange={(e) => handleUpdateOrderCredentialField(idx, f.key, e.target.value)}
+                            className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-white/10 text-xs text-white focus:outline-none focus:border-blue-500"
+                          />
+                        ))}
+                      </div>
+                    ))}
+
+                    <button type="submit" className="w-full py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold transition-all">
+                      {tr('حفظ وإرسال للعميل', 'Save & Send to Customer')}
+                    </button>
+                  </form>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
