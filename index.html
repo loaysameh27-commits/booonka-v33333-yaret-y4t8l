@@ -2260,7 +2260,7 @@ ${itemsLines}
                         </button>
                       </div>
                     ) : (
-                      <div className={`grid grid-cols-1 ${compact ? 'gap-4' : 'md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'}`}>
+                      <div className={`grid ${compact ? 'grid-cols-2 gap-2.5' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'}`}>
                         {filteredGames.map((game) => {
                           const selectedLicense = getSelectedLicenseForGame(game.id);
                           const activePrice = selectedLicense === 'Primary' 
@@ -2273,10 +2273,10 @@ ${itemsLines}
                           return (
                             <div
                               key={game.id}
-                              className="group rounded-3xl bg-slate-900/90 border border-white/10 hover:border-blue-500/50 overflow-hidden flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl"
+                              className={`group ${compact ? 'rounded-2xl' : 'rounded-3xl hover:-translate-y-1'} bg-slate-900/90 border border-white/10 hover:border-blue-500/50 overflow-hidden flex flex-col justify-between transition-all duration-300 hover:shadow-2xl`}
                             >
                               <div>
-                                <div className="relative h-52 overflow-hidden bg-slate-950">
+                                <div className={`relative ${compact ? 'h-28' : 'h-52'} overflow-hidden bg-slate-950`}>
                                   <img
                                     src={game.image}
                                     alt={game.title}
@@ -2288,21 +2288,21 @@ ${itemsLines}
                                   />
                                   <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/30 to-transparent" />
 
-                                  <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2">
-                                    <span className="px-2.5 py-1 rounded-lg text-[11px] font-black tracking-wider uppercase bg-white/90 text-slate-950 border border-white">
+                                  <div className={`absolute ${compact ? 'top-1.5 left-1.5 right-1.5' : 'top-3 left-3 right-3'} flex items-center justify-between gap-1`}>
+                                    <span className={`${compact ? 'px-1.5 py-0.5 text-[9px]' : 'px-2.5 py-1 text-[11px]'} rounded-lg font-black tracking-wider uppercase bg-white/90 text-slate-950 border border-white`}>
                                       {game.console}
                                     </span>
                                     {discountPercent > 0 && (
-                                      <span className="px-2.5 py-1 rounded-lg text-[11px] font-extrabold bg-emerald-500/90 text-slate-950">
+                                      <span className={`${compact ? 'px-1.5 py-0.5 text-[9px]' : 'px-2.5 py-1 text-[11px]'} rounded-lg font-extrabold bg-emerald-500/90 text-slate-950`}>
                                         {`-${discountPercent}%`}
                                       </span>
                                     )}
                                   </div>
 
-                                  <div className={`absolute bottom-3 ${isAr ? 'left-3' : 'right-3'} flex items-center gap-1.5`}>
+                                  <div className={`absolute ${compact ? 'bottom-1.5' : 'bottom-3'} ${isAr ? (compact ? 'left-1.5' : 'left-3') : (compact ? 'right-1.5' : 'right-3')} flex items-center gap-1`}>
                                     <button
                                       onClick={() => setSelectedGameModal(game)}
-                                      className="p-2 rounded-xl bg-slate-950/80 hover:bg-blue-600 text-slate-200 hover:text-white border border-white/15 backdrop-blur-md transition-colors"
+                                      className={`${compact ? 'p-1.5' : 'p-2'} rounded-xl bg-slate-950/80 hover:bg-blue-600 text-slate-200 hover:text-white border border-white/15 backdrop-blur-md transition-colors`}
                                     >
                                       <Eye className="w-4 h-4" />
                                     </button>
@@ -2317,51 +2317,51 @@ ${itemsLines}
                                   </div>
                                 </div>
 
-                                <div className="p-5 space-y-4">
+                                <div className={compact ? 'p-2.5 space-y-2' : 'p-5 space-y-4'}>
                                   <div>
                                     <h3 
                                       onClick={() => setSelectedGameModal(game)}
-                                      className="font-bold text-lg text-white group-hover:text-blue-400 transition-colors line-clamp-1 cursor-pointer"
+                                      className={`font-bold ${compact ? 'text-[13px] leading-tight line-clamp-2 min-h-[2rem]' : 'text-lg line-clamp-1'} text-white group-hover:text-blue-400 transition-colors cursor-pointer`}
                                     >
                                       {game.title}
                                     </h3>
-                                    <p className="text-xs text-slate-400 line-clamp-2 mt-1 leading-relaxed">
+                                    <p className={`${compact ? 'hidden' : ''} text-xs text-slate-400 line-clamp-2 mt-1 leading-relaxed`}>
                                       {game.description}
                                     </p>
                                   </div>
 
                                   <div className="space-y-2">
-                                    <div className="flex items-center justify-between text-[11px] text-slate-400">
-                                      <span className="font-semibold">{tr('اختر نوع الحساب:', 'Select Edition:')}</span>
+                                    <div className={`flex items-center justify-between text-[11px] text-slate-400 ${compact ? 'text-[10px]' : ''}`}>
+                                      <span className={`font-semibold ${compact ? 'hidden' : ''}`}>{tr('اختر نوع الحساب:', 'Select Edition:')}</span>
                                       <span className={activeStock > 0 ? 'text-emerald-400 font-semibold' : 'text-rose-400 font-semibold'}>
                                         {activeStock > 0 ? tr(`متاح (${activeStock})`, `${activeStock} Available`) : tr('نفدت الكمية', 'Sold Out')}
                                       </span>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-slate-950 border border-white/10">
+                                    <div className={`grid ${compact ? 'grid-cols-1 gap-1 p-0.5' : 'grid-cols-2 gap-1.5 p-1'} rounded-xl bg-slate-950 border border-white/10`}>
                                       <button
                                         type="button"
                                         onClick={() => setLicenseForGame(game.id, 'Primary')}
-                                        className={`py-2 px-2.5 rounded-lg ${isAr ? 'text-right' : 'text-left'} transition-all ${
+                                        className={`${compact ? 'py-1.5 px-2' : 'py-2 px-2.5'} rounded-lg ${isAr ? 'text-right' : 'text-left'} transition-all ${
                                           selectedLicense === 'Primary' ? 'bg-blue-600/25 border border-blue-500 text-white' : 'text-slate-400 hover:text-slate-200 border border-transparent'
                                         }`}
                                       >
                                         <div className="flex items-center justify-between">
-                                          <span className="text-[11px] font-bold">{tr('أساسي', 'Primary')}</span>
-                                          <span className="text-xs font-extrabold text-blue-300">{formatEGP(game.primaryPrice, lang)}</span>
+                                          <span className={`${compact ? 'text-[10px]' : 'text-[11px]'} font-bold`}>{tr('أساسي', 'Primary')}</span>
+                                          <span className={`${compact ? 'text-[11px]' : 'text-xs'} font-extrabold text-blue-300`}>{formatEGP(game.primaryPrice, lang)}</span>
                                         </div>
                                       </button>
 
                                       <button
                                         type="button"
                                         onClick={() => setLicenseForGame(game.id, 'Secondary')}
-                                        className={`py-2 px-2.5 rounded-lg ${isAr ? 'text-right' : 'text-left'} transition-all ${
+                                        className={`${compact ? 'py-1.5 px-2' : 'py-2 px-2.5'} rounded-lg ${isAr ? 'text-right' : 'text-left'} transition-all ${
                                           selectedLicense === 'Secondary' ? 'bg-purple-600/25 border border-purple-500 text-white' : 'text-slate-400 hover:text-slate-200 border border-transparent'
                                         }`}
                                       >
                                         <div className="flex items-center justify-between">
-                                          <span className="text-[11px] font-bold">{tr('ثانوي', 'Secondary')}</span>
-                                          <span className="text-xs font-extrabold text-purple-300">{formatEGP(game.secondaryPrice, lang)}</span>
+                                          <span className={`${compact ? 'text-[10px]' : 'text-[11px]'} font-bold`}>{tr('ثانوي', 'Secondary')}</span>
+                                          <span className={`${compact ? 'text-[11px]' : 'text-xs'} font-extrabold text-purple-300`}>{formatEGP(game.secondaryPrice, lang)}</span>
                                         </div>
                                       </button>
                                     </div>
@@ -2369,16 +2369,16 @@ ${itemsLines}
                                 </div>
                               </div>
 
-                              <div className="px-5 pb-5 pt-2 flex items-center justify-between gap-3 border-t border-white/5">
+                              <div className={`${compact ? 'px-2.5 pb-2.5 pt-2 flex-col items-stretch gap-2' : 'px-5 pb-5 pt-2 items-center justify-between gap-3'} flex border-t border-white/5`}>
                                 <div>
-                                  <span className="text-[11px] text-slate-500 line-through block">{formatEGP(retailPrice, lang)}</span>
-                                  <span className="text-xl font-black text-white">{formatEGP(activePrice, lang)}</span>
+                                  <span className="text-[10px] sm:text-[11px] text-slate-500 line-through block">{formatEGP(retailPrice, lang)}</span>
+                                  <span className={`${compact ? 'text-base' : 'text-xl'} font-black text-white`}>{formatEGP(activePrice, lang)}</span>
                                 </div>
 
                                 <button
                                   onClick={() => addToCart(game, selectedLicense)}
                                   disabled={activeStock <= 0}
-                                  className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all ${
+                                  className={`${compact ? 'px-3 py-2 justify-center w-full' : 'px-4 py-2.5'} rounded-xl font-bold text-xs flex items-center gap-2 transition-all ${
                                     activeStock <= 0 ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/25'
                                   }`}
                                 >
