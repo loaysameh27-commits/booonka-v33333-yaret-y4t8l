@@ -21,6 +21,12 @@
       margin: 0;
       padding: 0;
     }
+    html { -webkit-text-size-adjust: 100%; }
+    body { overflow-x: hidden; }
+    /* 16px inputs stop iOS Safari from zooming the page when a field is focused */
+    @media (max-width: 820px) {
+      input, select, textarea { font-size: 16px !important; }
+    }
     ::-webkit-scrollbar {
       width: 8px;
       height: 8px;
@@ -492,6 +498,13 @@
       const tr = (arText, enText) => (lang === 'ar' ? arText : enText);
 
       const [previewDevice, setPreviewDevice] = useState('pc');
+      const [isNarrow, setIsNarrow] = useState(() => typeof window !== 'undefined' && window.innerWidth < 820);
+      useEffect(() => {
+        const onResize = () => setIsNarrow(window.innerWidth < 820);
+        window.addEventListener('resize', onResize);
+        return () => window.removeEventListener('resize', onResize);
+      }, []);
+      const compact = previewDevice === 'mobile' || isNarrow;
       const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
         try {
           return sessionStorage.getItem('bonka_admin_unlocked') === 'true';
@@ -1947,7 +1960,7 @@ ${itemsLines}
 
               {/* Toast */}
               {toast && (
-                <div className={`fixed bottom-6 ${isAr ? 'right-6' : 'left-6'} z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl border backdrop-blur-xl animate-bounce bg-slate-900/95 border-cyan-500/40 text-white max-w-md`}>
+                <div className={`fixed bottom-6 ${isAr ? 'right-6' : 'left-6'} z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl border backdrop-blur-xl animate-bounce bg-slate-900/95 border-cyan-500/40 text-white max-w-[calc(100vw-3rem)] sm:max-w-md`}>
                   {toast.type === 'error' ? (
                     <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />
                   ) : toast.type === 'info' ? (
@@ -1961,24 +1974,24 @@ ${itemsLines}
 
               {/* Navbar */}
               <header className="sticky top-0 z-40 border-b border-white/10 bg-[#060913]/85 backdrop-blur-xl">
-                <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${previewDevice === 'mobile' ? 'py-3 flex-wrap' : 'h-20'} flex items-center justify-between gap-3`}>
+                <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${compact ? 'py-3 flex-wrap' : 'h-20'} flex items-center justify-between gap-3`}>
                   <div 
                     onClick={() => setActiveTab('store')}
                     className="flex items-center gap-2.5 cursor-pointer group shrink-0 select-none"
                   >
-                    <div className={`${previewDevice === 'mobile' ? 'w-9 h-9' : 'w-11 h-11'} rounded-2xl bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-800 flex items-center justify-center shadow-lg shadow-blue-600/30 group-hover:scale-105 transition-transform`}>
-                      <Gamepad2 className={`${previewDevice === 'mobile' ? 'w-5 h-5' : 'w-6 h-6'} text-white`} />
+                    <div className={`${compact ? 'w-9 h-9' : 'w-11 h-11'} rounded-2xl bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-800 flex items-center justify-center shadow-lg shadow-blue-600/30 group-hover:scale-105 transition-transform`}>
+                      <Gamepad2 className={`${compact ? 'w-5 h-5' : 'w-6 h-6'} text-white`} />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className={`font-extrabold ${previewDevice === 'mobile' ? 'text-base' : 'text-lg sm:text-xl'} tracking-tight bg-gradient-to-r from-white via-blue-100 to-blue-400 bg-clip-text text-transparent`}>
+                        <span className={`font-extrabold ${compact ? 'text-base' : 'text-lg sm:text-xl'} tracking-tight bg-gradient-to-r from-white via-blue-100 to-blue-400 bg-clip-text text-transparent`}>
                           BONKA STORE
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  <nav className={`flex items-center gap-1 bg-slate-900/90 p-1 rounded-2xl border border-white/10 ${previewDevice === 'mobile' ? 'order-3 w-full justify-around mt-1' : ''}`}>
+                  <nav className={`flex items-center gap-1 bg-slate-900/90 p-1 rounded-2xl border border-white/10 ${compact ? 'order-3 w-full justify-around mt-1 overflow-x-auto' : ''}`}>
                     <button
                       onClick={() => setActiveTab('store')}
                       className={`px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 ${
@@ -2034,7 +2047,7 @@ ${itemsLines}
                         setLang(nextLang);
                         showToast(nextLang === 'en' ? 'Switched language to English' : 'تم تغيير اللغة إلى العربية', 'info');
                       }}
-                      className="flex items-center gap-1.5 px-3 py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-white/15 text-xs font-extrabold text-white transition-all shadow-sm"
+                      className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-white/15 text-xs font-extrabold text-white transition-all shadow-sm"
                     >
                       <Globe className="w-4 h-4 text-blue-400" />
                       <span>{lang === 'ar' ? 'EN' : 'عربي'}</span>
@@ -2078,18 +2091,18 @@ ${itemsLines}
               </header>
 
               {/* Main Container */}
-              <main className={`relative z-10 max-w-7xl mx-auto ${previewDevice === 'mobile' ? 'px-3 py-4' : 'px-4 sm:px-6 lg:px-8 py-8'}`}>
+              <main className={`relative z-10 max-w-7xl mx-auto ${compact ? 'px-3 py-4' : 'px-4 sm:px-6 lg:px-8 py-8'}`}>
                 {activeTab === 'store' && (
                   <div className="space-y-8">
                     {/* Hero */}
-                    <div className={`relative rounded-3xl overflow-hidden border border-white/10 bg-gradient-to-br from-slate-900 via-[#0b132b] to-indigo-950 ${previewDevice === 'mobile' ? 'p-4' : 'p-6 sm:p-10'} shadow-2xl`}>
-                      <div className={`grid grid-cols-1 ${previewDevice === 'mobile' ? 'gap-5' : 'lg:grid-cols-12 gap-8'} items-center`}>
-                        <div className={`${previewDevice === 'mobile' ? '' : 'lg:col-span-7'} space-y-4`}>
+                    <div className={`relative rounded-3xl overflow-hidden border border-white/10 bg-gradient-to-br from-slate-900 via-[#0b132b] to-indigo-950 ${compact ? 'p-4' : 'p-6 sm:p-10'} shadow-2xl`}>
+                      <div className={`grid grid-cols-1 ${compact ? 'gap-5' : 'lg:grid-cols-12 gap-8'} items-center`}>
+                        <div className={`${compact ? '' : 'lg:col-span-7'} space-y-4`}>
                           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/15 border border-blue-400/30 text-blue-300 text-[11px] font-semibold">
                             <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                             <span>{tr('تسليم فوري للـ QR Code • خصومات حتى 75%', 'Instant QR Code Delivery • Up to 75% Off')}</span>
                           </div>
-                          <h1 className={`${previewDevice === 'mobile' ? 'text-2xl' : 'text-3xl sm:text-5xl'} font-black tracking-tight text-white leading-tight`}>
+                          <h1 className={`${compact ? 'text-2xl' : 'text-3xl sm:text-5xl'} font-black tracking-tight text-white leading-tight`}>
                             {tr('العب أقوى ألعاب PS4 و PS5 ', 'Play Top PS4 & PS5 Games ')}
                             <span className="bg-gradient-to-r from-blue-400 via-cyan-300 to-indigo-400 bg-clip-text text-transparent">
                               {tr('بأقل الأسعار في مصر والوطن العربي.', 'At the Best Prices.')}
@@ -2103,7 +2116,7 @@ ${itemsLines}
                           </p>
 
                           <div className="pt-2 flex flex-col sm:flex-row sm:items-center gap-3">
-                            <div className={`inline-flex p-1.5 rounded-2xl bg-slate-950/90 border border-white/15 ${previewDevice === 'mobile' ? 'flex-col w-full gap-1' : ''}`}>
+                            <div className={`inline-flex p-1.5 rounded-2xl bg-slate-950/90 border border-white/15 ${compact ? 'flex-col w-full gap-1' : ''}`}>
                               <button
                                 onClick={() => handleGlobalLicenseSwitch('Primary')}
                                 className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
@@ -2134,7 +2147,7 @@ ${itemsLines}
                           </div>
                         </div>
 
-                        <div className={previewDevice === 'mobile' ? '' : 'lg:col-span-5'}>
+                        <div className={compact ? '' : 'lg:col-span-5'}>
                           <div className="rounded-2xl bg-slate-950/80 border border-white/10 p-5 space-y-4 backdrop-blur-md">
                             <div className="flex items-center justify-between border-b border-white/10 pb-3">
                               <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
@@ -2247,7 +2260,7 @@ ${itemsLines}
                         </button>
                       </div>
                     ) : (
-                      <div className={`grid grid-cols-1 ${previewDevice === 'mobile' ? 'gap-4' : 'md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'}`}>
+                      <div className={`grid grid-cols-1 ${compact ? 'gap-4' : 'md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'}`}>
                         {filteredGames.map((game) => {
                           const selectedLicense = getSelectedLicenseForGame(game.id);
                           const activePrice = selectedLicense === 'Primary' 
