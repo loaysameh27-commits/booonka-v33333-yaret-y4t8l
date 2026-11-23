@@ -11,11 +11,24 @@
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
   
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Space Mono"', 'Cairo', 'monospace'],
+            mono: ['"Space Mono"', 'Cairo', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
   <style>
     body {
-      font-family: 'Cairo', 'Inter', sans-serif;
+      font-family: 'Space Mono', 'Cairo', monospace;
       background-color: #060913;
       color: #f1f5f9;
       margin: 0;
@@ -1855,7 +1868,7 @@ ${itemsLines}
       return (
         <div
           dir={isAr ? 'rtl' : 'ltr'}
-          className={`min-h-screen bg-[#060913] text-slate-100 font-sans selection:bg-cyan-500 selection:text-slate-950 ${
+          className={`min-h-screen bg-[#060913] text-slate-100 font-mono selection:bg-cyan-500 selection:text-slate-950 ${
             isAr ? 'text-right' : 'text-left'
           }`}
         >
